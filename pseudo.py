@@ -84,16 +84,15 @@
 
 # "compare_routes" function, checks order against existing routes, receives order_id
     # for each order
-        # create temp RouteClass variable set to NULL
+        # create temp RouteClass variable set to NULL ? not sure how to handle temporary routes
         # call "check_points"
         # if temp RouteClass variable != NULL 
             # create temp CapacityClass variable set to NULL
             # call "check_capacity" 
-
-            # if True call "check_time"
-                # if True set route_id to temp_route_id
+                # if True call "check_time"
+                    # if True set route_id to temp_route_id
+                    # else break
                 # else break
-            # else break
         # else break
     # return temp RouteClass variable
 
