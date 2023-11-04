@@ -175,4 +175,5 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
 
 # "is_profitable" function, checks to see if a new route is profitable
     # receives route_id
+    # logic
     # returns True or False
