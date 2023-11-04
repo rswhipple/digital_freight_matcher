@@ -1,0 +1,3 @@
+# if someone wants to mess with our database, knock yourself out
+url = "https://fqrmaitmdgjjnxgoioiz.supabase.co"
+something = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxcm1haXRtZGdqam54Z29pb2l6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTg3Mjg0NDUsImV4cCI6MjAxNDMwNDQ0NX0.Hdw4X1flEUNsssG_B5ngUlEDbtVmIYBy4Bfzo8q0srs"
