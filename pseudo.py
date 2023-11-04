@@ -11,21 +11,21 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
 # create database with tables [routes, capacity, truck_info, orders, costs, cargo, margins] (see below)
 # each table should be a class (?)
     
-""" routes class / table """
+""" RouteClass / routes table """
 # create routes table with cols [route_id, points, total_miles, total_time]
     # route_id is assigned in database
     # points(lon, lat), only the pickup/ drop_off points taken from assignement 
     # total_miles is imported from Mapbox API
     # total_time is imported from Mapbox API
 
-""" capacity class / table """
+""" CapacityClass / capacity table """
 # create capacity table with cols [route_id, route_geom(coordinates), empty_vol, empty_weight]
     # route_id references routes table
     # route_geom is imported from Mapbox API
     # empty_vol defaults to 1700 (cubic feet)
     # empty_weight defaults to 9180 (pounds)
 
-""" truck_info class / table """
+""" TruckInfo class / truck_info table """
 # create truck info table with cols ( truck_id, route_id, route_geom(coordinates), capacity_vol, capacity_weight )
     # truck_id assigned in database (?)
     # route_id references routes table (we only have 1 type of truck now, but I've included this if the client has different size trucks in the future)
@@ -34,7 +34,7 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # pallet_cost (per mile) is calculated from costs and cargo tables:   total_cost / (capacity_vol / 64)
     # std_package_cost (per mile) is calculated from costs and cargo tables:   total_cost / (capacity_vol / 18)
 
-""" order class / table """
+""" OrderClass / orders table """
 # create orders table with cols [order_id, route_id, pickup, drop_off, cargo, price, confirmed]
     # order_id is assigned in database or from order form
     # pickup point(long, lat) is taken from order form
@@ -46,17 +46,17 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # price is calculated using Tony's logic ...
     # confirmed is True or False, defaults to False
 
-""" costs class / table """
+""" CostClass / costs table """
 # create costs table with cols [total_cost, trucker, fuel, leasing, maintenance, insurance, miles_gallon, gas_price]
     # total_cost (per mile) is the sum of trucker, fuel, leasing, maintenance, insurance
     # fuel is gas_price / miles_gallon
 
-""" cargo class / table """
+""" CargoClass / cargo table """
 # create cargo table with cols [cargo_type, cargo_vol, cargo_cost]
     # cargo_type is pallet or std_package
     # cargo_vol is taken from spreadsheets, pallet = 64 cubic feet, std_package = 18 cubic feet
 
-""" margins class / table """
+""" MarginsClass / margins table """
 # create margins table with cols ( route_id, operational_cost, income, margin )
     # route_id references routes table
     # operational_cost is total_miles * total_cost
@@ -81,13 +81,6 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # empty_capacity is route_id -> truck_id -> (capacity_vol - sum of total_vol of orders) 
         # but this is more complex, because we need to check when cargo is picked up and dropped off
     # return empty_capacity
-
-# "new_order" function, handles a new order
-    # receive order (from form??)
-    # create temp OrderClass variable
-    # call "compare_routes"
-    # if route_id is NULL, call "create_new_route"
-    # if route_id is not NULL, call "add_order_to_route"
 
 # "compare_routes" function, checks order against existing routes, receives order_id
     # for each order
@@ -120,17 +113,30 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # check if new route time is less than 10 hours 
     # return True if True, else return False
 
+""" functions below = Tony """
+
+# "new_order" function, handles a new order
+    # receive order (from form??)
+    # create OrderClass variable
+    # call "compare_routes"
+    # if route_id is NULL, call "create_new_route"
+    # if route_id is not NULL, call "add_order_to_route"
+
 # "add_order_to_route" function, adds an order to a route
     # add pickup and drop_off points to routes table (in the correct order)
-    # update route_geom in coordinates table (using Mapbox API)
+    # update route_geom and capacity in capacity_table (using Mapbox API)
     # update confirmed col in orders table 
     # update margins table
 
 # "create_new_route" function, creates a new route
-    # create an empty route in routes table
-    # add pickup and drop_off points to routes table (in the correct order)
-    # update capacity table with route_geom (using Mapbox API)
-    # update total_miles and total_time in routes table (using Mapbox API)
+    # create a new RouteClass variable
+    # add pickup and drop_off points from the order
+    # call "import_route" using new route_id and points
+        # if total_time is too long return NULL
+        # else 
+            # add RouteClass variable to routes table
+            # update capacity table with route_geom (using Mapbox API)
+            # update total_miles and total_time in routes table (using Mapbox API)
 
 # "calculate_price" function, calculates the price of a new order
 
