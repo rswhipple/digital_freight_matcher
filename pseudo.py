@@ -1,6 +1,6 @@
 # TASKS 2023-11-04
-Alan - #1 Create database with 7 tables listed above
-Prakash - #2 Create all the classes
+Alan - #1 Create database with 7 tables listed below
+Prakash - #2 Create all the classes listed below
 Becky - #3 Create functions: "import_route", "empty_capacity", "compare_routes", "check_points", "check_capacity", "check_time"
 Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route", "calculate_price", "is_profitable"
 
@@ -66,21 +66,21 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
 
 
 """ functions """
-# "import_route" function, imports route_geom from Mapbox API
+# "import_route" function, imports data from Mapbox API
     # receives a dynamic number of points (minimum 2), and route_id (if available)
     # create access_token variable
     # convert points into MapBox API request url
     # make the API request
     # check if the request was successful (HTTP status code 200)
-    # if successful, parse into route_geom
+    # if successful, parse into total_time, total_mile and coordinates
     # return route_geom (total_time, total_miles, coordinates)
 
 # "empty_capacity" function, calculates empty_capacity from orders table
-    # route_id
+    # receives route_id
     # query orders table for orders with route_id
     # empty_capacity is route_id -> truck_id -> (capacity_vol - sum of total_vol of orders) 
         # but this is more complex, because we need to check when cargo is picked up and dropped off
-    # return empty_capacity
+    # returns empty_vol and empty_weight for each coordinate
 
 # "compare_routes" function, checks order against existing routes, receives order_id
     # for each order
@@ -116,17 +116,28 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
 """ functions below = Tony """
 
 # "new_order" function, handles a new order
-    # receive order (from form??)
+    # receive order (json from form??)
     # create OrderClass variable
     # call "compare_routes"
-    # if route_id is NULL, call "create_new_route"
-    # if route_id is not NULL, call "add_order_to_route"
+    # if route_id is NULL
+        # check if order is within range
+            # if True continue
+            # if False return -1 
+        # call "create_new_route"
+        # call "is_profitable"
+            # if True call "calculate_price" and return price
+            # if False return 0
+    # else if route_id is not NULL
+        # call "add_order_to_route"
+        # call "calculate_price" and return price
+
 
 # "add_order_to_route" function, adds an order to a route
     # add pickup and drop_off points to routes table (in the correct order)
     # update route_geom and capacity in capacity_table (using Mapbox API)
     # update confirmed col in orders table 
     # update margins table
+    # return EXIT_SUCCESS
 
 # "create_new_route" function, creates a new route
     # create a new RouteClass variable
