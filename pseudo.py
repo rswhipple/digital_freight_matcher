@@ -110,7 +110,6 @@
     # return True if both are True, else return False
 
 # "check_time" function, checks if new route time exceeds 10 hours, receives route_id, order_id
-    # 
     # check if new route time is less than 10 hours 
     # return True if True, else return False
 
