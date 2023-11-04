@@ -125,3 +125,11 @@
     # update route_geom in coordinates table (using Mapbox API)
     # update total_miles and total_time in routes table (using Mapbox API)
     # 
+
+
+
+# TASKS
+#1 Create database with 7 tables listed above
+#2 Create all the classes
+#3 Create functions: "import_route", "empty_capacity", "compare_routes", 
+#4 Create functions: "new_order", "add_order_to_route", "create_new_route", "calculate_price"
