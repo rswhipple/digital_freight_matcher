@@ -129,7 +129,7 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
 # "create_new_route" function, creates a new route
     # create an empty route in routes table
     # add pickup and drop_off points to routes table (in the correct order)
-    # update route_geom in coordinates table (using Mapbox API)
+    # update capacity table with route_geom (using Mapbox API)
     # update total_miles and total_time in routes table (using Mapbox API)
 
 # "calculate_price" function, calculates the price of a new order
