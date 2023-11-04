@@ -72,8 +72,17 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # convert points into MapBox API request url
     # make the API request
     # check if the request was successful (HTTP status code 200)
-    # if successful, parse into total_time, total_mile and coordinates
-    # return route_geom (total_time, total_miles, coordinates)
+    # if successful, parse into total_mile and coordinates
+    # return route_geom (total_miles, coordinates)
+
+# "import_time" function, imports time data from Mapbox API
+    # receives a dynamic number of points (minimum 3)
+    # create access_token variable
+    # convert points into MapBox API request url
+    # make the API request
+    # check if the request was successful (HTTP status code 200)
+    # if successful, parse into total_time
+    # return total_time 
 
 # "empty_capacity" function, calculates empty_capacity from orders table
     # receives route_id
@@ -118,20 +127,27 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
 
 # "new_order" function, handles a new order
     # receive order (json from form??)
-    # create OrderClass variable
+    # create OrderClass variable and populate data from form
+    # check if order is within range ("is_in_range" function?)
+        # if True continue
+        # if False return -1 
     # call "compare_routes"
     # if route_id is NULL
-        # check if order is within range (new function?)
-            # if True continue
-            # if False return -1 
         # call "create_new_route"
         # call "is_profitable"
             # if True call "calculate_price" and return price
             # if False return 0
     # else if route_id is not NULL
         # assign route_id to OrderClass
-        # call "add_order_to_route" with OrderClass variable's order_id
+        # call "add_order_to_route" with order_id of OrderClass variable
         # call "calculate_price" and return price
+
+# "is_in_range" function, check if a new order is too far away
+    # receives order_id 
+    # calls "import_time" using points [Atlanta, pickup, drop_off, Atlanta]
+    # if time > 10 hours
+        # returns False
+    # else returns True 
 
 # "add_order_to_route" function, adds an order to a route
     # receives order_id (you can find route_id via order_id in database)
@@ -139,7 +155,7 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # update route_geom and capacity in capacity_table (using Mapbox API)
     # update confirmed col in orders table 
     # update margins table
-    # return EXIT_SUCCESS
+    # return EXIT_SUCCESS or EXIT_FAILURE
 
 # "create_new_route" function, creates a new route
     # receives order_id 
@@ -147,12 +163,16 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # add pickup and drop_off points from the order, all points = [Atlanta, pickup, drop_off, Atlanta]
     # call "import_route" using new route_id and points
     # add RouteClass variable to routes table
+    # assign route_id to order_id in orders table
     # update capacity table with route_geom (using Mapbox API)
     # update total_miles and total_time in routes table (using Mapbox API)
     # return route_id
 
 # "calculate_price" function, calculates the price of a new order
     # receives order_id
+    # logic
     # returns price
 
 # "is_profitable" function, checks to see if a new route is profitable
+    # receives route_id
+    # returns True or False
