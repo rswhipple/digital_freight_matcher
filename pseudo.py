@@ -82,7 +82,8 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
         # but this is more complex, because we need to check when cargo is picked up and dropped off
     # returns empty_vol and empty_weight for each coordinate
 
-# "compare_routes" function, checks order against existing routes, receives order_id
+# "compare_routes" function, checks order against existing routes
+    # receives order_id
     # for each order
         # create temp RouteClass variable set to NULL ? not sure how to handle temporary routes
         # call "check_points"
@@ -120,7 +121,7 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # create OrderClass variable
     # call "compare_routes"
     # if route_id is NULL
-        # check if order is within range
+        # check if order is within range (new function?)
             # if True continue
             # if False return -1 
         # call "create_new_route"
@@ -128,11 +129,12 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
             # if True call "calculate_price" and return price
             # if False return 0
     # else if route_id is not NULL
-        # call "add_order_to_route"
+        # assign route_id to OrderClass
+        # call "add_order_to_route" with OrderClass variable's order_id
         # call "calculate_price" and return price
 
-
 # "add_order_to_route" function, adds an order to a route
+    # receives order_id (you can find route_id via order_id in database)
     # add pickup and drop_off points to routes table (in the correct order)
     # update route_geom and capacity in capacity_table (using Mapbox API)
     # update confirmed col in orders table 
@@ -140,15 +142,17 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # return EXIT_SUCCESS
 
 # "create_new_route" function, creates a new route
+    # receives order_id 
     # create a new RouteClass variable
-    # add pickup and drop_off points from the order
+    # add pickup and drop_off points from the order, all points = [Atlanta, pickup, drop_off, Atlanta]
     # call "import_route" using new route_id and points
-        # if total_time is too long return NULL
-        # else 
-            # add RouteClass variable to routes table
-            # update capacity table with route_geom (using Mapbox API)
-            # update total_miles and total_time in routes table (using Mapbox API)
+    # add RouteClass variable to routes table
+    # update capacity table with route_geom (using Mapbox API)
+    # update total_miles and total_time in routes table (using Mapbox API)
+    # return route_id
 
 # "calculate_price" function, calculates the price of a new order
+    # receives order_id
+    # returns price
 
 # "is_profitable" function, checks to see if a new route is profitable
