@@ -19,7 +19,7 @@
     # empty_weight defaults to 9180 (pounds)
 
 """ truck_info class / table """
-# create truck capacity table with cols ( truck_id, route_id, route_geom(coordinates), capacity_vol, capacity_weight )
+# create truck info table with cols ( truck_id, route_id, route_geom(coordinates), capacity_vol, capacity_weight )
     # truck_id assigned in database (?)
     # route_id references routes table (we only have 1 type of truck now, but I've included this if the client has different size trucks in the future)
     # capacity_vol capacity defaults to 1700 (cubic feet)
