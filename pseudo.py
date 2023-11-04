@@ -124,12 +124,15 @@
     # add pickup and drop_off points to routes table (in the correct order)
     # update route_geom in coordinates table (using Mapbox API)
     # update total_miles and total_time in routes table (using Mapbox API)
-    # 
+
+# "calculate_price" function, calculates the price of a new order
+
+# "is_profitable" function, checks to see if a new route is profitable
 
 
 
 # TASKS
 #1 Create database with 7 tables listed above
 #2 Create all the classes
-#3 Create functions: "import_route", "empty_capacity", "compare_routes", 
-#4 Create functions: "new_order", "add_order_to_route", "create_new_route", "calculate_price"
+#3 Create functions: "import_route", "empty_capacity", "compare_routes", "check_points", "check_capacity", "check_time"
+#4 Create functions: "new_order", "add_order_to_route", "create_new_route", "calculate_price", "is_profitable"
