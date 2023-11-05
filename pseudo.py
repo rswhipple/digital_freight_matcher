@@ -11,21 +11,21 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
 # create database with tables [routes, capacity, truck_info, orders, costs, cargo, margins] (see below)
 # each table should be a class (?)
     
-""" RouteClass / routes table """
+""" class Route / routes table """
 # create routes table with cols [route_id, points, total_miles, total_time]
     # route_id is assigned in database
     # points(lon, lat), only the pickup/ drop_off points taken from assignement 
     # total_miles is imported from Mapbox API
     # total_time is imported from Mapbox API
 
-""" CapacityClass / capacity table """
+""" class Capacity / capacity table """
 # create capacity table with cols [route_id, route_geom(coordinates), empty_vol, empty_weight]
     # route_id references routes table
     # route_geom is imported from Mapbox API
     # empty_vol defaults to 1700 (cubic feet)
     # empty_weight defaults to 9180 (pounds)
 
-""" TruckInfo class / truck_info table """
+""" class TruckInfo / truck_info table """
 # create truck info table with cols ( truck_id, route_id, route_geom(coordinates), capacity_vol, capacity_weight )
     # truck_id assigned in database (?)
     # route_id references routes table (we only have 1 type of truck now, but I've included this if the client has different size trucks in the future)
@@ -34,7 +34,7 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # pallet_cost (per mile) is calculated from costs and cargo tables:   total_cost / (capacity_vol / 64)
     # std_package_cost (per mile) is calculated from costs and cargo tables:   total_cost / (capacity_vol / 18)
 
-""" OrderClass / orders table """
+""" class Order / orders table """
 # create orders table with cols [order_id, route_id, pickup, drop_off, cargo, price, confirmed]
     # order_id is assigned in database or from order form
     # pickup point(long, lat) is taken from order form
@@ -46,17 +46,17 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # price is calculated using Tony's logic ...
     # confirmed is True or False, defaults to False
 
-""" CostClass / costs table """
+""" class Cost / costs table """
 # create costs table with cols [total_cost, trucker, fuel, leasing, maintenance, insurance, miles_gallon, gas_price]
     # total_cost (per mile) is the sum of trucker, fuel, leasing, maintenance, insurance
     # fuel is gas_price / miles_gallon
 
-""" CargoClass / cargo table """
+""" class Cargo / cargo table """
 # create cargo table with cols [cargo_type, cargo_vol, cargo_cost]
     # cargo_type is pallet or std_package
     # cargo_vol is taken from spreadsheets, pallet = 64 cubic feet, std_package = 18 cubic feet
 
-""" MarginsClass / margins table """
+""" class Margins / margins table """
 # create margins table with cols ( route_id, operational_cost, income, margin )
     # route_id references routes table
     # operational_cost is total_miles * total_cost
@@ -94,10 +94,10 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
 # "compare_routes" function, checks order against existing routes
     # receives order_id
     # for each order
-        # create temp RouteClass variable set to NULL ? not sure how to handle temporary routes
+        # create temp Route object set to NULL ? not sure how to handle temporary routes
         # call "check_points"
-        # if temp RouteClass variable != NULL 
-            # create temp CapacityClass variable set to NULL
+        # if temp Route object != NULL 
+            # create temp Capacity  object set to NULL
             # call "check_capacity" 
                 # if True call "check_time"
                     # if True set route_id to temp_route_id
@@ -110,9 +110,9 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # use POSTGIS to check if pick up is within 1 km of route
     # use POSTGIS to check if drop off is within 1 km of route && after pick up
     # if both are True, 
-        # temp RouteClass variable = route_id
+        # temp Route object = route_id
         # points = original points + order.pickup + order.drop_off (in the correct order)
-    # return temp RouteClass variable
+    # return temp Route object
 
 # "check_capacity" function, checks if route has empty_capacity for order, receives route_id, order_id
     # check if empty_vol is greater than order.total_vol between pickup and drop_off
@@ -127,7 +127,7 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
 
 # "new_order" function, handles a new order
     # receive order (json from form??)
-    # create OrderClass variable and populate data from form
+    # create Order object and populate data from form
     # check if order is within range ("is_in_range" function?)
         # if True continue
         # if False return -1 
@@ -139,7 +139,7 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
             # if False return 0
     # else if route_id is not NULL
         # assign route_id to OrderClass
-        # call "add_order_to_route" with order_id of OrderClass variable
+        # call "add_order_to_route" with order_id of Order object
         # call "calculate_price" and return price
 
 # "is_in_range" function, check if a new order is too far away
@@ -159,7 +159,7 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
 
 # "create_new_route" function, creates a new route
     # receives order_id 
-    # create a new RouteClass variable
+    # create a new Route object
     # add pickup and drop_off points from the order, all points = [Atlanta, pickup, drop_off, Atlanta]
     # call "import_route" using new route_id and points
     # add RouteClass variable to routes table
