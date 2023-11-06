@@ -36,7 +36,7 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # std_package_cost (per mile) is calculated from costs and cargo tables:   total_cost / (capacity_vol / 18)
 
 """ class Order / orders table """
-# create orders table with cols [order_id, route_id, pickup, drop_off, cargo, price, confirmed]
+# create orders table with cols [order_id, route_id, pickup, drop_off, cargo, order_vol, order_weight, price, confirmed]
     # order_id is assigned in database or from order form
     # pickup point(long, lat) is taken from order form
     # drop_off point(long, lat) is taken from order form
