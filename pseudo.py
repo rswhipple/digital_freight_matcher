@@ -12,8 +12,9 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
 # each table should be a class (?)
     
 """ class Route / routes table """
-# create routes table with cols [route_id, points, total_miles, total_time]
+# create routes table with cols [route_id, route_name, points, total_miles, total_time]
     # route_id is assigned in database
+    # route_name is the anchor point aka "Ringgold"
     # points(lon, lat), only the pickup/ drop_off points taken from assignement 
     # total_miles is imported from Mapbox API
     # total_time is imported from Mapbox API
@@ -40,8 +41,8 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # pickup point(long, lat) is taken from order form
     # drop_off point(long, lat) is taken from order form
     # cargo_type is taken from order form (pallet or std_package)
-    # total_vol is taken from order form (num_packages * cargo_vol of type)
-    # total_weight is taken from order form (num_packages * cargo_weight of type)
+    # order_vol is taken from order form (num_packages * cargo_vol of type)
+    # order_weight is taken from order form (num_packages * cargo_weight of type)
     # route_id references routes table, "n/a" if order is not yet assigned to a route
     # price is calculated using Tony's logic ...
     # confirmed is True or False, defaults to False
