@@ -20,30 +20,30 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # total_time is imported from Mapbox API
 
 """ class Capacity / capacity table """
-# create capacity table with cols [route_id, route_geom(coordinates), empty_vol, empty_weight]
-    # route_id references routes table
+# create capacity table with cols [capacity_route_id, route_geom(coordinates), empty_vol, empty_weight]
+    # capacity_route_id references routes table
     # route_geom is imported from Mapbox API
     # empty_vol defaults to 1700 (cubic feet)
     # empty_weight defaults to 9180 (pounds)
 
 """ class TruckInfo / truck_info table """
-# create truck info table with cols ( route_id, capacity_vol, capacity_weight )
+# create truck info table with cols ( truck_route_id, capacity_vol, capacity_weight )
     # truck_id assigned in database (?)
-    # route_id references routes table (we only have 1 type of truck now, but I've included this if the client has different size trucks in the future)
+    # truck_route_id references routes table (we only have 1 type of truck now, but I've included this if the client has different size trucks in the future)
     # capacity_vol capacity defaults to 1700 (cubic feet)
     # capacity_weight capacity defaults to 9180 (pounds)
     # pallet_cost (per mile) is calculated from costs and cargo tables:   total_cost / (capacity_vol / 64)
     # std_package_cost (per mile) is calculated from costs and cargo tables:   total_cost / (capacity_vol / 18)
 
 """ class Order / orders table """
-# create orders table with cols [order_id, route_id, pickup, drop_off, order_type, order_vol, order_weight, price, confirmed]
+# create orders table with cols [order_id, order_route_id, pickup, drop_off, order_type, order_vol, order_weight, price, confirmed]
     # order_id is assigned in database or from order form
     # pickup point(long, lat) is taken from order form
     # drop_off point(long, lat) is taken from order form
     # order_type is taken from order form (pallet or std_package)
     # order_vol is taken from order form (num_packages * cargo_vol of type)
     # order_weight is taken from order form (num_packages * cargo_weight of type)
-    # route_id references routes table, "n/a" if order is not yet assigned to a route
+    # order_route_id references routes table, "n/a" if order is not yet assigned to a route
     # price is calculated using Tony's logic ...
     # confirmed is True or False, defaults to False
 
@@ -58,8 +58,8 @@ Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route
     # cargo_vol is taken from spreadsheets, pallet = 64 cubic feet, std_package = 18 cubic feet
 
 """ class Margins / margins table """
-# create margins table with cols ( route_id, operational_cost, income, margin )
-    # route_id references routes table
+# create margins table with cols ( margin_route_id, operational_cost, income, margin )
+    # margin_route_id references routes table
     # operational_cost is total_miles * total_cost
     # income is calculated from orders table
     # margin is calculated from operational_cost and income
