@@ -1,9 +1,8 @@
 from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import ARRAY  # Import ARRAY data type
+from . import Base  # Import the Base from the main __init__.py
 
-Base = declarative_base()
 
 # Define the TruckInfo table
 class TruckInfo(Base):

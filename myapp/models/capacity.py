@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import ARRAY  # Import ARRAY data type
+from . import Base  # Import the Base from the main __init__.py
 
-Base = declarative_base()
+
 class Capacity(Base):
     __tablename__ = 'capacity'
     route_id = Column(Integer, ForeignKey('routes.route_id'), primary_key=True)

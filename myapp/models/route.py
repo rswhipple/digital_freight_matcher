@@ -1,9 +1,7 @@
 from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import ARRAY  # Import ARRAY data type
-
-Base = declarative_base()
+from . import Base  # Import the Base from the main __init__.py
 
 class Route(Base):
     __tablename__ = 'routes'
@@ -11,5 +9,5 @@ class Route(Base):
     total_miles = Column(Float)
     total_time = Column(Float)
     # points column to store latitude and longitude coordinates as an array
-    points = Column(ARRAY(Float))  # to store coordinates as an array of floats
+    points = Column(ARRAY(Float))
 
