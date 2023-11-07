@@ -9,10 +9,9 @@ supabase = create_client(something.url, something.something)
 
 # Function to Fetch All Orders
 def find_all_orders():
-    data = supabase.table('orders').select("*").execute()
-    # Equivalent for SQL Query "SELECT * FROM Orders;"
-    return data.data
-
+    response = supabase.table('orders').select("*").execute()
+    # Equivalent for SQL Query "SELECT * FROM orders;"
+    return response.data
 
 @app.route('/')
 def index():
@@ -37,7 +36,7 @@ def process_order():
             pick_up = data.get("pick-up", {})
             drop_off = data.get("drop-off", {})
 
-            cbm, weight, package_type = packages
+            volume, weight, package_type = packages
             latitude_pick_up = pick_up.get("latitude", 0)
             longitude_pick_up = pick_up.get("longitude", 0)
             latitude_drop_off = drop_off.get("latitude", 0)
@@ -45,8 +44,7 @@ def process_order():
 
             # Process the data or return a response as needed
             response_data = {
-                "message": "Data received and processed successfully",
-                "cbm": cbm,
+                "volume": volume,
                 "weight": weight,
                 "package_type": package_type,
                 "latitude_pick_up": latitude_pick_up,
@@ -55,6 +53,8 @@ def process_order():
                 "longitude_drop_off": longitude_drop_off,
             }
 
+            # add items to database
+            response = supabase.table('orders').insert(response_data).execute()
             return jsonify(response_data)
 
         except Exception as e:
