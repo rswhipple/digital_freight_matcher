@@ -1,57 +1,59 @@
-from dotenv import load_dotenv
-load_dotenv()
+from flask import Flask, request, jsonify
+from supabase import create_client, Client
+import something
+from pprint import pprint
 
-from classes import *
-import requests
-import os
+app = Flask(__name__)
 
-from supabase import create_client
-
-import json
-
-url = os.environ.get("SUPABASE_URL")
-key = os.environ.get("SUPABASE_KEY")
-
-supabase = create_client(url, key)
-
-
-def compare_routes(order_id):
-  # get pickup and dropoff points from orders table
-  order_table = "orders" 
-
-  query = f"""
-    SELECT pickup, drop_off, order_vol, order_weight
-    FROM {order_table}
-    WHERE id = {order_id};
-    """
+supabase = create_client(something.url, something.something)
   
-  # Execute the query
-  response = supabase.query(query)
+  
+def process_order(order_id, order_data):
+    # create local variables
+    order_table = "orders"
 
-  if response.status_code == 200:
-    order = response.get("data")
-    pickup = order[0]["pickup"]
-    drop_off = order[0]["drop_off"]
+    # check if order fits on an existing route
+    route = compare_routes(order_data)   
 
-    results = check_points(pickup, drop_off)
-
-    if results:
-      capacity = check_capacity(order, results)
-
-      if capacity:
-        route_id = results[0]["route_id"]
-
-        # Update orders table with route_id
-        order_update = supabase.table(order_table).update({"order_route_id": route_id}).eq("id", order_id).execute()
+    # if route is found, add order to route
+    if route:
+        order_update = supabase.table(order_table).update({"order_route_id": route}).eq("id", order_id).execute()
         assert len(order_update.data) > 0, "Error: Unable to update orders table with route_id"
-        return route_id
-      else:
-        return None
+    # else create new route
+    else: 
+        route = create_new_route(order_id, order_data)
+
+    # calculate price
+    price = calculate_price(order_id)
+                            
+    # if price is None, send error message
+
+    return price
+
+
+def compare_routes(order_id, order_data):
+  # create local variables
+  pick_up = order_data["pick_up"]
+  drop_off = order_data["drop_off"]
+
+  # create pickup and dropoff points ON EXISTING ROUTES
+  results = check_points(pick_up, drop_off)
+
+  if results:
+    capacity = check_capacity(order_data, results)
+
+    if capacity:
+      route_id = results[0]["route_id"]
+
+      # # Update orders table with route_id
+      # order_update = supabase.table(order_table).update({"order_route_id": route_id}).eq("id", order_id).execute()
+      # assert len(order_update.data) > 0, "Error: Unable to update orders table with route_id"
+      return route_id
     else:
       return None
-    
   else:
-    print(response.error)
+    return None
+    
   
 # pickup and dropoff points come from orders table
 def check_points(pickup, drop_off):
@@ -130,3 +132,16 @@ def import_route(points):
     print("Error: Unable to fetch route data")
 
 
+def is_in_range(pick_up, drop_off):
+  # Set variable for 
+  home_base = (-84.3875298776525, 33.754413815792205)
+
+  points = [home_base, pick_up, drop_off, home_base]
+
+  route_data = import_route(points)
+
+  # Check if route is within 10 hours
+  if route_data["routes"][0]["duration"] < 36000:
+    return True
+  else:
+    return False
