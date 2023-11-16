@@ -9,46 +9,51 @@ supabase = create_client(something.url, something.something)
   
   
 def process_order(order_id, order_data):
-    # create local variables
-    order_table = "orders"
+  # create local variables
+  order_table = "orders"
+  price = 0
 
-    # check if order fits on an existing route
-    route = compare_routes(order_data)   
+  # check if order fits on an existing route
+  route_match = compare_routes(order_data)   
 
-    # if route is found, add order to route
-    if route:
-        order_update = supabase.table(order_table).update({"order_route_id": route}).eq("id", order_id).execute()
-        assert len(order_update.data) > 0, "Error: Unable to update orders table with route_id"
-    # else create new route
-    else: 
-        route = create_new_route(order_id, order_data)
+  # if route is found, add order to route
+  if route_match:
+    route = route_match[0]["route_id"]
+    order_update = supabase.table(order_table).update({"order_route_id": route}).eq("id", order_id).execute()
+    assert len(order_update.data) > 0, "Error: Unable to update orders table with route_id"
 
-    # calculate price
-    price = calculate_price(order_id)
-                            
-    # if price is None, send error message
-
+  # else create new route
+  else: 
+    route_match = create_new_route(order_id, order_data)  #*** tony's function, needs to return route_id ***
+        
+  if is_original(route_match):
+    price = calculate_price(order_id)                     #*** tony's function ***
     return price
+  
+  else:
+    results = is_profitable(route_match)                  #*** tony's function, if True returns all orders in route and their prices ***
+    if results:
+      message = f"New profitable route found, route_id {route_match[0]['route_id']}."
+      return message
+    else:
+      return None
+    
 
 
-def compare_routes(order_id, order_data):
+
+def compare_routes(order_data):
   # create local variables
   pick_up = order_data["pick_up"]
   drop_off = order_data["drop_off"]
 
   # create pickup and dropoff points ON EXISTING ROUTES
-  results = check_points(pick_up, drop_off)
+  route_match = check_points(pick_up, drop_off)
 
-  if results:
-    capacity = check_capacity(order_data, results)
+  if route_match:
+    capacity = check_capacity(order_data, route_match)
 
     if capacity:
-      route_id = results[0]["route_id"]
-
-      # # Update orders table with route_id
-      # order_update = supabase.table(order_table).update({"order_route_id": route_id}).eq("id", order_id).execute()
-      # assert len(order_update.data) > 0, "Error: Unable to update orders table with route_id"
-      return route_id
+      return route_match
     else:
       return None
   else:
@@ -74,19 +79,19 @@ def check_points(pickup, drop_off):
   response = supabase.query(query)
   
   if response.status_code == 200:
-    results = response.get("data")
-    return results
+    route_match = response.get("data")
+    return route_match
       
   else:
     print(response.error)
 
 
-def check_capacity(order, results):
-  route_id = results[0]["route_id"]
-  pickup = results[0]["pickup"]
-  drop_off = results[0]["drop_off"]
-  order_vol = order[0]["order_vol"]
-  order_weight = order[0]["order_weight"]
+def check_capacity(order_data, route_match):
+  route_id = route_match[0]["route_id"]
+  pickup = route_match[0]["pickup"]
+  drop_off = route_match[0]["drop_off"]
+  order_vol = order_data[0]["order_vol"]
+  order_weight = order_data[0]["order_weight"]
 
   capacity_table = "capacity"
 
@@ -142,6 +147,13 @@ def is_in_range(pick_up, drop_off):
 
   # Check if route is within 10 hours
   if route_data["routes"][0]["duration"] < 36000:
+    return True
+  else:
+    return False
+  
+def is_original(route_match):
+  route_id = route_match[0]["route_id"]
+  if route_id >= 1 and route_id <= 5:
     return True
   else:
     return False

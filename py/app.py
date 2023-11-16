@@ -63,12 +63,19 @@ def add_order_database():
             if not range:
                 # Update order in database and return error if out of range
                 response = supabase.table('orders').update({"in_range": False}).eq("id", order_id).execute()
-                return jsonify({"error": "Order is out of range"})
+                return jsonify({"error": "No possible routes, order is out of range"})
 
             # Process order
-            process_order(order_id, response_data)
+            price = process_order(order_id, response_data)
 
-            return jsonify(response_data) # this will need to be changed
+            if price:
+                # Update order in database
+                response = supabase.table('orders').update({"price": price}).eq("id", order_id).execute()
+                assert len(response.data) > 0, "Error: Unable to update orders table with price"
+                return jsonify({"price": price})
+            else:
+                message = "No profitable route options yet, order has been added to the database."
+                return jsonify({message}) # this will need to be changed
 
         except Exception as e:
             return jsonify({"error": "Invalid input format or processing error"})
@@ -91,11 +98,13 @@ def confirm_order():
             order_id = data.get("order_id", 0)
 
             # Add order to the routes table
+            route_info = add_order_to_route(order_id)                  #*** tony's function, needs to return route_id and route_name ***
 
             # Update order status to confirmed
+            response = supabase.table('orders').update("confirmed", True).eq("id", order_id).execute()
 
-
-            return jsonify(response_data) # this will need to be changed
+            message = f"Order has been confirmed and added to route {route_info['route_name']}, id {route_info['route_id']}."
+            return message # this will need to be changed
 
         except Exception as e:
             return jsonify({"error": "Invalid input format or processing error"})
