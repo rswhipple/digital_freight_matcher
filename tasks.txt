@@ -1,0 +1,13 @@
+* TASKS 2023-11-16
+
+** Alan
+*** integrate database with functions
+
+** Prakash 
+*** work on front end user routes (will explain on Saturday)
+
+** Tony
+*** finish functions to prepare for testing
+
+** Becky 
+*** finish functions to prepare for testing

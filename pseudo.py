@@ -1,10 +1,3 @@
-# TASKS 2023-11-04
-Alan - #1 Create database with 7 tables listed below
-Prakash - #2 Create all the classes listed below
-Becky - #3 Create functions: "import_route", "empty_capacity", "compare_routes", "check_points", "check_capacity", "check_time"
-Tony - #4 Create functions: "new_order", "add_order_to_route", "create_new_route", "calculate_price", "is_profitable"
-
-
 """ Description: Pseudo code for the Digital Freight project """
 
 """ database """
