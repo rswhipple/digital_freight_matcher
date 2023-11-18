@@ -1,51 +1,4 @@
-# Tony's functions
-
-# "new_order" function, handles a new order
-    # receive order (json from form??)
-    # create Order object and populate data from form
-    # check if order is within range ("is_in_range" function?)
-        # if True continue
-        # if False return -1 
-    # call "compare_routes"
-    # if route_id is NULL
-        # call "create_new_route"
-        # call "is_profitable"
-            # if True call "calculate_price" and return price
-            # if False return 0
-    # else if route_id is not NULL
-        # assign route_id to OrderClass
-        # call "add_order_to_route" with order_id of Order object
-        # call "calculate_price" and return price
-def new_order(order):
-    """
-    order: json from form?
-    """
-    new_order = Order(order)
-    if (not is_in_range(new_order)):
-        return -1
-
-    route = compare_routes(new_order.id)
-    if route.id == None:
-        new_route = create_new_route(new_order.id)
-        if is_profitable(new_route):
-            return calculate_price(new_order.id)
-        else:
-            return 0
-    else:
-        new_order.route = route.id
-        add_order_to_route(new_order.id)  # TODO check return value
-        return calculate_price(new_order.id)
-
-
-# "is_in_range" function, check if a new order is too far away
-    # receives order_id 
-    # calls "import_time" using points [Atlanta, pickup, drop_off, Atlanta]
-    # if time > 10 hours
-        # returns False
-    # else returns True 
-def is_in_range(order_id):
-    return import_time(order_id) <= 10  # TODO what gets passed?; magic number
-
+from supabase import create_client, Client
 
 # "add_order_to_route" function, adds an order to a route
     # receives order_id (you can find route_id via order_id in database)
@@ -68,8 +21,24 @@ def add_order_to_route(order_id):  # TODO how to update table?
     # update capacity table with route_geom (using Mapbox API)
     # update total_miles and total_time in routes table (using Mapbox API)
     # return route_id
-def create_new_route(order_id):
-    new_route = Route(order_id)
+#*** tony's function, needs to return route_id ***
+            #response_data = {
+            #    "volume": volume,
+            #    "weight": weight,
+            #    "package_type": package_type,
+            #    "pick_up": pick_up,
+            #    "drop_off": drop_off,
+            #    "in_range": True,
+            #}
+# return value will go into is_profitable
+def create_new_route(order_id, order_data):
+    new_route = {
+        "route_name": 
+        "total_miles":
+        "total_time":
+        "points":
+    }
+
     new_route.pickup = order_id.start
     new_route.dropoff = order_id.end
     import_route()  # TODO What gets passed?
@@ -81,7 +50,9 @@ def create_new_route(order_id):
     # receives order_id
     # logic
     # returns price
+    #price = calculate_price(order_id)                     #*** tony's function ***
 def calculate_price(order_id):
+    markup = supabase.table('margins').select('margin').execute()
     return (order_id.route.pallets + cargo) * PALLET_COST * (1 + MARKUP)
 
 
@@ -89,6 +60,7 @@ def calculate_price(order_id):
     # receives route_id
     # logic
     # returns True or False
+    #*** tony's function, if True returns all orders in route and their prices ***
 def is_profitable(route_id):
     OTC = route_id.distance * TOTAL_COSTS
     cargo_cost = PALLETS * PALLET_COST
