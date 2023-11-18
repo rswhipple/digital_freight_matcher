@@ -32,19 +32,26 @@ def add_order_to_route(order_id):  # TODO how to update table?
             #}
 # return value will go into is_profitable
 def create_new_route(order_id, order_data):
-    new_route = {
-        "route_name": 
-        "total_miles":
-        "total_time":
-        "points":
-    }
+    home_base = (-84.3875298776525, 33.754413815792205)
+    points = [home_base, order_data["pick_up"], order_data["drop_off"], home_base]
+    new_route = {"points": points}
+
+    response = supabase.table('routes').insert(new_route).execute()
+    route_id = response.data[0]["id"]
+
+    route_data = import_route(points)
+    response = supabase.table('capacity').insert(new_route).execute()
 
     new_route.pickup = order_id.start
     new_route.dropoff = order_id.end
-    import_route()  # TODO What gets passed?
     # TODO update tables
     return new_route.id
-
+"""
+‡ route_geometry = route_data ["routes") [0] ["geometry") |
+• total_time = route_data["routes") [0) ["duration"]
+* total_miles = route_data ["routes"] [0] ["distance"|]
+* Process the route data as needed
+"""
 
 # "calculate_price" function, calculates the price of a new order
     # receives order_id
