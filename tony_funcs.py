@@ -1,14 +1,31 @@
 from supabase import create_client, Client
 
-# "add_order_to_route" function, adds an order to a route
-    # receives order_id (you can find route_id via order_id in database)
-    # add pickup and drop_off points to routes table (in the correct order)
-    # update route_geom and capacity in capacity_table (using Mapbox API)
-    # update confirmed col in orders table 
-    # update margins table
-    # return EXIT_SUCCESS or EXIT_FAILURE
-def add_order_to_route(order_id):  # TODO how to update table?
-    pass
+
+def add_order_to_route(order_id):
+    """adds an order to a given route
+
+    order_id: int -- id of order to add to a route
+
+    return: True if successful, False otherwise
+    """
+    # get route id
+    route_id = supabase.table('orders').select('id', 'order_route_id') \
+        .eq('id', order_id).execute()
+    route_id = route_id[0]['order_route_id']
+
+    # TODO add pickup and dropoff point to routes table
+    # I'm assuming pickup and dropoff are from order and must be put in points
+    # format
+    
+    # TODO update route_geom and capacity in 'capacity' (using Mapbox API)
+    # is this same as create_new_route?
+
+    # TODO update confirmed col in orders table 
+    # confirm_order()?
+
+    # TODO update margins table
+
+    return True
 
 
 def create_new_route(order_id, order_data):
