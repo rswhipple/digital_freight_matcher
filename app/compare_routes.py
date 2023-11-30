@@ -24,14 +24,14 @@ def process_order(order_id, order_data):
 
   # else create new route
   else: 
-    route_match = create_new_route(order_id, order_data)  #*** tony's function, needs to return route_id ***
+    route_match = create_new_route(order_id, order_data)
         
   if is_original(route_match):
-    price = calculate_price(order_id)                     #*** tony's function ***
+    price = calculate_price(order_id)
     return price
   
   else:
-    results = is_profitable(route_match)                  #*** tony's function, if True returns all orders in route and their prices ***
+    results = is_profitable(route_match)                  #if True returns all orders in route and their prices *** RWS
     if results:
       message = f"New profitable route found, route_id {route_match[0]['route_id']}."
       return message
@@ -76,8 +76,8 @@ def check_points(pickup, drop_off):
   # Execute the query
   response = supabase.query(query)
   
-  if response.status_code == 200:
-    route_match = response.get("data")
+  if response.error is None:
+    route_match = response.data
     return route_match
       
   else:
@@ -104,8 +104,8 @@ def check_capacity(order_data, route_match):
   # Execute the query
   response = supabase.query(query)
 
-  if response.status_code == 200:
-    capacity = response.get("data")
+  if response.error is None:
+    capacity = response.data
     return capacity
   
   else:
@@ -124,7 +124,7 @@ def import_route(points):
   url = f"https://api.mapbox.com/directions/v5/mapbox/driving/{coordinates}?alternatives=true&geometries=geojson&language=en&overview=full&steps=true&access_token={access_token}"
 
   # Make the API request
-  response = requests.get(url)
+  response = request.get(url)
 
   # Check if the request was successful 
   if response.status_code == 200:
@@ -166,19 +166,24 @@ def add_order_to_route(order_id):
     return: True if successful, False otherwise
     """
     # get route id
-    route_id = supabase.table('orders').select('id', 'order_route_id') \
-        .eq('id', order_id).execute()
-    route_id = route_id[0]['order_route_id']
+    route_id = supabase.table('orders').select('order_route_id') \
+        .eq('id', order_id).execute()   
+    
+    if route_id.error is None:
+      route_id = route_id[0]['order_route_id']
+
+    else:
+      print(route_id.error)
 
     # TODO add pickup and dropoff point to routes table
     # I'm assuming pickup and dropoff are from order and must be put in points
     # format
     
     # TODO update route_geom and capacity in 'capacity' (using Mapbox API)
-    # is this same as create_new_route?
+    # is this same as create_new_route? NO  - RWS
 
-    # TODO update confirmed col in orders table 
-    # confirm_order()?
+    # update confirmed col in orders table 
+    response = supabase.table('orders').update({'confirmed': True}).eq('id', order_id).execute()
 
     # TODO update margins table
 
@@ -200,13 +205,44 @@ def create_new_route(order_id, order_data):
 
     # insert into 'routes' table
     route_id = supabase.table('routes').insert(new_route).execute()
-    route_id = route_id.data[0]["id"]
+
+    if route_id.error is None:
+      route_id = route_id.data[0]["id"]
 
     # calculate data
-    route_data = import_route(points)
+    route_data = import_route(points)                                        
 
     # insert into 'capacity' table
-    response = supabase.table('capacity').insert(route_data).execute()
+    route_geom = route_data['routes'][0]['geometry']
+    capacity_row_data = {
+      'route_geom':route_geom,
+      'capacity_route_id':route_id
+    }
+    response = supabase.table('capacity').insert(capacity_row_data).execute()
+
+    if response.error:
+      print("Error during insert:", response.error)
+
+    # update time and miles in routes
+    distance_in_meters = route_data['routes'][0]['distance']
+    duration_in_seconds = route_data['routes'][0]['duration']
+
+    # Convert meters to miles (1 meter = 0.000621371 miles), and minutes to hours
+    total_miles = distance_in_meters * 0.000621371
+    total_time = duration_in_seconds / 60
+
+    route_row_data = {
+      'total_miles': total_miles,
+      'total_time': total_time
+    }
+
+    response = supabase.tables('routes').update(route_row_data).eq('id', route_id).execute()
+
+    if response.error:
+      print("Error during update:", response.error)
+
+
+    # need to update empty_volume and empty_weight in capacity
 
     return route_id
 
@@ -251,7 +287,8 @@ def is_profitable(route_id):
         .eq('id', route_id).execute()
     total_miles = total_miles.data[0]['total_miles']
 
-    # query pallet cost per mile
+    # query pallet cost per mile                                                    
+    # need to figure this out RWS
     num_pallets = supabase.table('orders').select('id', 'pallets') \
         .eq('id', order_id).execute()
     num_pallets = num_pallets.data[0]['pallets']
@@ -281,6 +318,10 @@ def calc_total_costs():
     return: total cost
     note: 'costs' table setup wrong direction
     """
+    # what does this note above mean? RWS
+    # total costs are already calculated in the costs table  RWS
+
+
     trucker = supabase.table('costs').select('trucker_cost').execute()
     trucker = trucker.data[0]['trucker']
 
