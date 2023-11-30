@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
 from supabase import create_client, Client
+# import schedule
+# import time
 import something
 from pprint import pprint
 from compare_routes import *
@@ -81,6 +83,16 @@ def add_order_database():
             return jsonify({"error": "Invalid input format or processing error"})
     else:
         return jsonify({"error": "Invalid request format (JSON expected)"})
+
+# def midnight_eraser():
+#     # erase supabase orders here
+
+# schedule.every().day.at("00:00").do(midnight_eraser)
+
+# def run_scheduler():
+#     while True:
+#         schedule.run_pending()
+
 
 
 if __name__ == '__main__':
