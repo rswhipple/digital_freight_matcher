@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from supabase import create_client, Client
-# import schedule
-# import time
+import schedule
+import time
 import something
 from pprint import pprint
 from compare_routes import *
@@ -10,11 +10,6 @@ app = Flask(__name__)
 
 supabase = create_client(something.url, something.something)
 
-# Function to Fetch All Orders
-def find_all_orders():
-    response = supabase.table('orders').select("*").execute()
-    # Equivalent for SQL Query "SELECT * FROM orders;"
-    return response.data
 
 @app.route('/')
 def index():
@@ -84,20 +79,6 @@ def add_order_database():
     else:
         return jsonify({"error": "Invalid request format (JSON expected)"})
 
-# def midnight_eraser():
-#     # erase supabase orders here
-
-# schedule.every().day.at("00:00").do(midnight_eraser)
-
-# def run_scheduler():
-#     while True:
-#         schedule.run_pending()
-
-
-
-if __name__ == '__main__':
-  app.run()
-
 
 @app.route('/confirm_order', methods=['POST'])
 def confirm_order():
@@ -123,3 +104,29 @@ def confirm_order():
     else:
         return jsonify({"error": "Invalid request format (JSON expected)"})
     
+
+def reset_databases():
+    # erase all orders in 'orders' db    
+    supabase.table('orders').delete().gte('id', 0)eq.execute()
+    # add more tasks here if needed
+
+
+def schedule_reset_at_midnight():
+    # Schedule task to run daily at midnight
+    schedule.every().day.at("00:00").do(reset_at_midnight)
+
+    while True:
+        # Run scheduled tasks
+        schedule.run_pending()
+        time.sleep(1)
+
+
+if __name__ == '__main__':
+    # Run separate thread for scheduled resets
+    from threading import Thread
+
+    scheduler_thread = Thread(target=schedule_reset_at_midnight)
+    scheduler_thread.start()
+
+    # Run everything else aka the app
+    app.run()
