@@ -46,31 +46,92 @@ def create_new_route(order_id, order_data):
     new_route.dropoff = order_id.end
     # TODO update tables
     return new_route.id
-"""
-‡ route_geometry = route_data ["routes") [0] ["geometry") |
-• total_time = route_data["routes") [0) ["duration"]
-* total_miles = route_data ["routes"] [0] ["distance"|]
-* Process the route data as needed
-"""
 
-# "calculate_price" function, calculates the price of a new order
-    # receives order_id
-    # logic
-    # returns price
-    #price = calculate_price(order_id)                     #*** tony's function ***
+
 def calculate_price(order_id):
-    markup = supabase.table('margins').select('margin').execute()
-    return (order_id.route.pallets + cargo) * PALLET_COST * (1 + MARKUP)
+    """calculates the price of a new order
+
+    order_id: int -- order id to use for calculating price
+
+    return: price as float
+    """
+    # query num of pallets in order
+    # TODO where to get num pallets? 2 queries? contract_info + orders?
+    #num_pallets = supabase.table('contract_info').select('Routes', 'Pallets') \    
+        #.eq('Routes', ?which route?)execute()
+    # "pallets" doesn't exist in 'orders' table yet
+    num_pallets = supabase.table('orders').select('id', 'pallets') \
+        .eq('id', order_id).execute()
+    num_pallets = num_pallets.data[0]['pallets']
+
+    # query pallet cost per mile
+    pallet_cost_per_mile = supabase.table('costs') \
+        .select('pallet_cost_per_mile').execute()
+    pallet_cost_per_mile = pallet_cost_per_mile.data[0]['pallets']
+
+    # query markup
+    markup = supabase.table('costs').select('markup').execute()
+    markup = markup.data[0]['markup']
+
+    return num_pallets * pallet_cost_per_mile * (1 + markup)
 
 
-# "is_profitable" function, checks to see if a new route is profitable
-    # receives route_id
-    # logic
-    # returns True or False
-    #*** tony's function, if True returns all orders in route and their prices ***
 def is_profitable(route_id):
-    OTC = route_id.distance * TOTAL_COSTS
-    cargo_cost = PALLETS * PALLET_COST
-    new_price = cargo_cost * (1 + MARKUP)
+    """checks to see if a new route is profitable
+
+    route_id: int -- route id to check
+
+    return: True if profitable, False otherwise
+    """
+    # query route distance
+    total_miles = supabase.table('routes').select('id', 'total_miles') \
+        .eq('id', route_id).execute()
+    total_miles = total_miles.data[0]['total_miles']
+
+    # query pallet cost per mile
+    num_pallets = supabase.table('orders').select('id', 'pallets') \
+        .eq('id', order_id).execute()
+    num_pallets = num_pallets.data[0]['pallets']
+
+    # query pallet cost per mile
+    pallet_cost_per_mile = supabase.table('costs') \
+        .select('pallet_cost_per_mile').execute()
+    pallet_cost_per_mile = pallet_cost_per_mile.data[0]['pallets']
+
+    # query markup
+    markup = supabase.table('costs').select('markup').execute()
+    markup = markup.data[0]['markup']
+
+    OTC = total_miles * calc_total_costs()
+    cargo_cost = num_pallets * pallet_cost_per_mile
+    new_price = cargo_cost * (1 + markup)
     margin = (new_price - OTC) / OTC
+
     return margin > 0
+
+
+def calc_total_costs():
+    """Calculate total costs from spreadsheet
+
+    Total = Trucker + Fuel + Leasing + Maintenance + Insurance
+
+    return: total cost
+    note: 'costs' table setup wrong direction
+    """
+    trucker = supabase.table('costs').select('trucker_cost').execute()
+    trucker = trucker.data[0]['trucker']
+
+    fuel = supabase.table('costs').select('fuel_cost').execute()
+    fuel = fuel.data[0]['fuel']
+
+    leasing = supabase.table('costs').select('leasing_cost').execute()
+    leasing = leasing.data[0]['leasing']
+
+    maintenance = supabase.table('costs').select('maintenance_cost').execute()
+    maintenance = maintenance.data[0]['maintenance']
+
+    insurance = supabase.table('costs').select('insurance_cost').execute()
+    insurance = insurance.data[0]['insurance']
+
+    return trucker + fuel + leasing + maintenance + insurance
+
