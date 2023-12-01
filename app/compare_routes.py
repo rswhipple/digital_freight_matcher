@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, json
 from supabase import create_client, Client
 import something
 from pprint import pprint
+import requests
 
 METERS2MILES = 0.000621371
 
@@ -475,7 +476,7 @@ def is_profitable(route_id):
     }
 
     # Make the request
-    response = request.post(
+    response = requests.post(
         f"{something.url}/rest/v1/rpc/{function_name}",
         headers=headers,
         data=json.dumps(payload)
@@ -484,7 +485,7 @@ def is_profitable(route_id):
     # Check response
     if response.status_code == 200:
         result = response.json()
-        total_price = result.data[0] if isinstance(result.data, list) else result.data
+        total_price = result.data[0]
     else:
         print(f"Error: {response.status_code}")
 
