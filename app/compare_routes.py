@@ -409,32 +409,31 @@ def is_profitable(route_id):
 
     route_id: int -- route id to check
 
+    method: query price all orders with route_id
+            sum all prices
+            calculate OTC of route
+            calculate margin
+
     return: True if profitable, False otherwise
     """
+    # get total price of orders on route
+    price_list = supabase.table('orders').select('price') \
+        .eq('order_route_id', route_id).execute()
+    total_price = sum(price['price'] for price in price_list.data)
+
     # query route distance
     total_miles = supabase.table('routes').select('id', 'total_miles') \
         .eq('id', route_id).execute()
     total_miles = total_miles.data[0]['total_miles']
 
-    # query pallet cost per mile                                                    
-    # need to figure this out RWS
-    num_pallets = supabase.table('orders').select('id', 'pallets') \
-        .eq('id', order_id).execute()
-    num_pallets = num_pallets.data[0]['pallets']
+    # query cost data
+    cost_table_data = supabase.table('costs') \
+        .select('total_cost', 'markup').execute()
+    total_cost_per_mile = cost_table_data.data[0]['total_cost']
+    markup = cost_table_data.data[0]['markup']
 
-    # query pallet cost per mile
-    pallet_cost_per_mile = supabase.table('costs') \
-        .select('pallet_cost_per_mile').execute()
-    pallet_cost_per_mile = pallet_cost_per_mile.data[0]['pallets']
-
-    # query markup
-    markup = supabase.table('costs').select('markup').execute()
-    markup = markup.data[0]['markup']
-
-    OTC = total_miles * calc_total_costs()
-    cargo_cost = num_pallets * pallet_cost_per_mile
-    new_price = cargo_cost * (1 + markup)
-    margin = (new_price - OTC) / OTC
+    OTC = total_miles * total_cost_per_mile
+    margin = (total_price - OTC) / OTC
 
     return margin > 0
 
