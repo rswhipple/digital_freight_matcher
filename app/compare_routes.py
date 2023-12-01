@@ -3,6 +3,8 @@ from supabase import create_client, Client
 import something
 from pprint import pprint
 
+METERS2MILES = 0.000621371
+
 app = Flask(__name__)
 
 supabase = create_client(something.url, something.something)
@@ -361,32 +363,45 @@ def determine_order(points, pickup_loc, dropoff_loc, route_geom):
   return 
 
 
-def calculate_price(order_id):
+def calculate_price(order_id, order_data, route_id):
     """calculates the price of a new order
 
     order_id: int -- order id to use for calculating price
 
     return: price as float
+    TODO: still need to update package_cost_per_mile data in table
     """
-    # query num of pallets in order
-    # TODO where to get num pallets? 2 queries? contract_info + orders?
-    #num_pallets = supabase.table('contract_info').select('Routes', 'Pallets') \    
-        #.eq('Routes', ?which route?)execute()
-    # "pallets" doesn't exist in 'orders' table yet
-    num_pallets = supabase.table('orders').select('id', 'pallets') \
+    # query number of packages
+    num_packages = supabase.table('orders').select('volume') \
         .eq('id', order_id).execute()
-    num_pallets = num_pallets.data[0]['pallets']
+    num_packages = num_packages.data[0]['volume']
 
     # query pallet cost per mile
-    pallet_cost_per_mile = supabase.table('costs') \
-        .select('pallet_cost_per_mile').execute()
-    pallet_cost_per_mile = pallet_cost_per_mile.data[0]['pallets']
+    cost_data = supabase.table('costs') \
+        .select('package_cost_per_mile', 'markup').execute()
+    package_cost_per_mile = cost_data.data[0]['package_cost_per_mile']
+    markup = cost_data.data[0]['markup']
 
-    # query markup
-    markup = supabase.table('costs').select('markup').execute()
-    markup = markup.data[0]['markup']
+    # calculate package distance
+    pickup = order_data['pick_up']
+    dropoff = order_data['drop_off']
 
-    return num_pallets * pallet_cost_per_mile * (1 + markup)
+    points = supabase.table('routes').select('points') \
+        .eq('id', route_id).execute()
+
+    for point, index in enumerate(points):
+        if point == pickup:
+            pickup_index = index
+        elif point == dropoff:
+            dropoff_index = index
+            break
+    package_points = point[pickup_index : dropoff_index + 1]
+
+    mapbox_data = import_route(package_points)
+    distance_meters = mapbox_data['routes'][0]['distance']
+    package_miles = distance_meters * METERS2MILES
+
+    return num_packages * package_cost_per_mile * package_miles * (1 + markup)
 
 
 def is_profitable(route_id):
