@@ -461,9 +461,32 @@ def is_profitable(route_id):
     return: True if profitable, False otherwise
     """
     # get total price of orders on route
-    price_list = supabase.table('orders').select('price') \
-        .eq('order_route_id', route_id).execute()
-    total_price = sum(price['price'] for price in price_list.data)
+    # price_list = supabase.table('orders').select('price') \
+    #     .eq('order_route_id', route_id).execute()
+    # total_price = sum(price['price'] for price in price_list.data)
+    function_name = "calculate_total_price"
+    payload = { "_route_id": route_id }
+
+    # Headers
+    headers = {
+        "apikey": something.something,
+        "Authorization": f"Bearer {something.something}",
+        "Content-Type": "application/json"
+    }
+
+    # Make the request
+    response = request.post(
+        f"{something.url}/rest/v1/rpc/{function_name}",
+        headers=headers,
+        data=json.dumps(payload)
+    )
+
+    # Check response
+    if response.status_code == 200:
+        result = response.json()
+        total_price = result.data[0] if isinstance(result.data, list) else result.data
+    else:
+        print(f"Error: {response.status_code}")
 
     # query route distance
     total_miles = supabase.table('routes').select('id', 'total_miles') \
