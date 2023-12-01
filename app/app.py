@@ -36,9 +36,8 @@ def add_order_database():
             # Access specific data from the JSON input
             cargo = data.get("cargo", {})
             packages = cargo.get("packages", [])
-            pick_up = data.get("pick-up", {})   # make sure format is (lon, lat)
+            pick_up = data.get("pick-up", {})   # make sure format is (lon, lat) ******************  this may cause error
             drop_off = data.get("drop-off", {})
-
             volume, weight, package_type = packages
             # pick_up = (pick_up.get("longitude", 0), pick_up.get("latitude", 0))
             # drop_off = (drop_off.get("longitude", 0), drop_off.get("latitude", 0))
@@ -68,7 +67,7 @@ def add_order_database():
                 return jsonify({"error": "No possible routes, order is out of range"})
 
             # Process order
-            price = process_order(order_id, response_data)
+            price = process_order(response_data, order_id)
 
             if price:
                 # Update order in database
@@ -99,27 +98,27 @@ if __name__ == '__main__':
   app.run()
 
 
-@app.route('/confirm_order', methods=['POST'])
-def confirm_order():
-    # Check if the request contains JSON data
-    if request.is_json:
-        try:
-            data = request.get_json()
+# @app.route('/confirm_order', methods=['POST'])
+# def confirm_order():
+#     # Check if the request contains JSON data
+#     if request.is_json:
+#         try:
+#             data = request.get_json()
 
-            # Access specific data from the JSON input
-            order_id = data.get("order_id", 0)
+#             # Access specific data from the JSON input
+#             order_id = data.get("order_id", 0)
 
-            # Add order to the routes table
-            route_info = add_order_to_route(order_id)                  #*** tony's function, needs to return route_id and route_name ***
+#             # Add order to the routes table
+#             route_info = add_order_to_route(order_id)                  #*** tony's function, needs to return route_id and route_name ***
 
-            # Update order status to confirmed
-            response = supabase.table('orders').update("confirmed", True).eq("id", order_id).execute()
+#             # Update order status to confirmed
+#             response = supabase.table('orders').update("confirmed", True).eq("id", order_id).execute()
 
-            message = f"Order has been confirmed and added to route {route_info['route_name']}, id {route_info['route_id']}."
-            return message # this will need to be changed
+#             message = f"Order has been confirmed and added to route {route_info['route_name']}, id {route_info['route_id']}."
+#             return message # this will need to be changed
 
-        except Exception as e:
-            return jsonify({"error": "Invalid input format or processing error"})
-    else:
-        return jsonify({"error": "Invalid request format (JSON expected)"})
+#         except Exception as e:
+#             return jsonify({"error": "Invalid input format or processing error"})
+#     else:
+#         return jsonify({"error": "Invalid request format (JSON expected)"})
     
