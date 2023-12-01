@@ -12,26 +12,29 @@ def process_order(order_id, order_data):
   # create local variables
   order_table = "orders"
   price = 0
+  route_id = 0
 
   # check if order fits on an existing route
   route_match = compare_routes(order_data)   
 
   # if route is found, add order to route
   if route_match:
-    route = route_match[0]["route_id"]
-    order_update = supabase.table(order_table).update({"order_route_id": route}).eq("id", order_id).execute()
+    route_id = route_match[0]["route_id"]
+    order_update = supabase.table(order_table).update({"order_route_id": route_id}).eq("id", order_id).execute()
     assert len(order_update.data) > 0, "Error: Unable to update orders table with route_id"
+
+    add_order_to_route(route_match, order_id)
 
   # else create new route
   else: 
-    route_match = create_new_route(order_id, order_data)
+    route_id = create_new_route(order_id, order_data)
         
-  if is_original(route_match):
+  if route_match:
     price = calculate_price(order_id)
     return price
   
   else:
-    results = is_profitable(route_match)                  #if True returns all orders in route and their prices *** RWS
+    results = is_profitable(route_match)  #if True returns all orders in route and their prices *** RWS
     if results:
       message = f"New profitable route found, route_id {route_match[0]['route_id']}."
       return message
@@ -158,7 +161,7 @@ def is_original(route_match):
 
 # Tony's functions starts here
 
-def add_order_to_route(order_id):
+def add_order_to_route(route_match, order_id):
     """adds an order to a given route
 
     order_id: int -- id of order to add to a route
@@ -166,21 +169,30 @@ def add_order_to_route(order_id):
     return: True if successful, False otherwise
     """
     # get route id
-    route_id = supabase.table('orders').select('order_route_id') \
-        .eq('id', order_id).execute()   
-    
-    if route_id.error is None:
-      route_id = route_id[0]['order_route_id']
-
-    else:
-      print(route_id.error)
+    route_id = route_match[0]["route_id"]
+    pickup_loc = route_match[0]["pickup_loc"]
+    dropoff_loc = route_match[0]["dropoff_loc"]
 
     # TODO add pickup and dropoff point to routes table
-    # I'm assuming pickup and dropoff are from order and must be put in points
-    # format
+    route_geom_response = supabase.table('capacity').select('route_geom').eq('capacity_route_id', route_id).execute()
+    
+    if route_geom_response.error is None and route_geom_response.data:
+      route_geom = route_geom_response.data[0]['route_geom']
+
+    points_response = supabase.table('routes').select('points').eq('id', route_id).execute()
+    
+    if points_response.error is None and points_response.data:
+      points = points_response.data[0]['points']
+
+    ordered_points = determine_order(points, pickup_loc, dropoff_loc, route_geom)
+
+    response = supabase.table('orders').update({'points': ordered_points}).eq('id', route_id).execute()
+
+    if response.error:
+      print("Error updating route with new points:", response.error)
     
     # TODO update route_geom and capacity in 'capacity' (using Mapbox API)
-    # is this same as create_new_route? NO  - RWS
+    update_route_and_capacity(route_id, ordered_points)
 
     # update confirmed col in orders table 
     response = supabase.table('orders').update({'confirmed': True}).eq('id', order_id).execute()
@@ -206,9 +218,18 @@ def create_new_route(order_id, order_data):
     # insert into 'routes' table
     route_id = supabase.table('routes').insert(new_route).execute()
 
-    if route_id.error is None:
-      route_id = route_id.data[0]["id"]
+    if route_id.error:
+      print("Error during insert:", route_id.error)
+      return False
 
+    route_id = route_id.data[0]["id"]
+
+    update_route_and_capacity(route_id, points)
+
+    return route_id
+
+
+def update_route_and_capacity(route_id, points):
     # calculate data
     route_data = import_route(points)                                        
 
@@ -240,11 +261,17 @@ def create_new_route(order_id, order_data):
 
     if response.error:
       print("Error during update:", response.error)
-
-
+      return False
+    
     # need to update empty_volume and empty_weight in capacity
 
-    return route_id
+    return True
+
+
+
+def determine_order(points, pickup_loc, dropoff_loc, route_geom):
+
+  return 
 
 
 def calculate_price(order_id):
@@ -318,7 +345,7 @@ def calc_total_costs():
     return: total cost
     note: 'costs' table setup wrong direction
     """
-    # what does this note above mean? RWS
+    # what does the note above mean? RWS
     # total costs are already calculated in the costs table  RWS
 
 
