@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, json
 from supabase import create_client, Client
 import something
 from pprint import pprint
@@ -111,25 +111,69 @@ def check_capacity(order_data, route_match):
   closest_dropoff = route_match[0]["closest_point_to_d"]
   order_vol = order_data["order_vol"]
   order_weight = order_data["order_weight"]
-  capacity_table = "capacity"
+  coordinates_table = "coordinates"
 
   # Query to check if route has capacity
   query = f"""
     SELECT empty_vol > {order_vol} AND empty_weight > {order_weight} AS capacity
-    FROM {capacity_table}
+    FROM {coordinates_table}
     WHERE {route_id} = route_id
       AND ST_Intersects(route_geom, ST_MakeLine({closest_pickup}, {closest_dropoff}))
   """
 
-  # Execute the query
-  response = supabase.query(query)
+  # # Execute the query
+  # response = supabase.rpc(
+  #     "check_capacity",  # The name of my PostgreSQL function
+  #     {
+  #         "_order_vol": order_vol,
+  #         "_order_weight": order_weight,
+  #         "_route_id": route_id,
+  #         "_closest_pickup": closest_pickup,
+  #         "_closest_dropoff": closest_dropoff
+  #     }
+  # ).execute()
 
-  if response.error is None:
-    capacity = response.data
-    return capacity
-  
+  # # Check the response
+  # if response.status_code == 200:
+  #     data = response.get_json()  # Extract the data from the response
+  #     capacity_available = data.get('result')  # Assuming 'result' is the key for the returned value
+  #     print("Capacity Available:", capacity_available)
+  # else:
+  #     print("Error:", response.status_code)
+
+  # Function and parameters
+  function_name = "check_capacity"
+  payload = {
+      "_order_vol": order_vol,
+      "_order_weight": order_weight,
+      "_route_id": route_id,
+      "_closest_pickup": closest_pickup,
+      "_closest_dropoff": closest_dropoff
+  }
+
+  # Headers
+  headers = {
+      "apikey": something.something,
+      "Authorization": f"Bearer {something.something}",
+      "Content-Type": "application/json"
+  }
+
+  # Make the request
+  response = request.post(
+      f"{something.url}/rest/v1/rpc/{function_name}",
+      headers=headers,
+      data=json.dumps(payload)
+  )
+
+  # Check response
+  if response.status_code == 200:
+      result = response.json()
+      capacity_available = result.data[0] if isinstance(result.data, list) else result.data
+      return capacity_available
   else:
-    print(response.error)
+      print(f"Error: {response.status_code}")
+
+
 
 
 # pickup and dropoff points come from orders table
@@ -438,31 +482,31 @@ def is_profitable(route_id):
     return margin > 0
 
 
-def calc_total_costs():
-    """Calculate total costs from spreadsheet
+# def calc_total_costs():
+#     """Calculate total costs from spreadsheet
 
-    Total = Trucker + Fuel + Leasing + Maintenance + Insurance
+#     Total = Trucker + Fuel + Leasing + Maintenance + Insurance
 
-    return: total cost
-    note: 'costs' table setup wrong direction
-    """
-    # what does the note above mean? RWS
-    # total costs are already calculated in the costs table  RWS
+#     return: total cost
+#     note: 'costs' table setup wrong direction
+#     """
+#     # what does the note above mean? RWS
+#     # total costs are already calculated in the costs table  RWS
 
 
-    trucker = supabase.table('costs').select('trucker_cost').execute()
-    trucker = trucker.data[0]['trucker']
+#     trucker = supabase.table('costs').select('trucker_cost').execute()
+#     trucker = trucker.data[0]['trucker']
 
-    fuel = supabase.table('costs').select('fuel_cost').execute()
-    fuel = fuel.data[0]['fuel']
+#     fuel = supabase.table('costs').select('fuel_cost').execute()
+#     fuel = fuel.data[0]['fuel']
 
-    leasing = supabase.table('costs').select('leasing_cost').execute()
-    leasing = leasing.data[0]['leasing']
+#     leasing = supabase.table('costs').select('leasing_cost').execute()
+#     leasing = leasing.data[0]['leasing']
 
-    maintenance = supabase.table('costs').select('maintenance_cost').execute()
-    maintenance = maintenance.data[0]['maintenance']
+#     maintenance = supabase.table('costs').select('maintenance_cost').execute()
+#     maintenance = maintenance.data[0]['maintenance']
 
-    insurance = supabase.table('costs').select('insurance_cost').execute()
-    insurance = insurance.data[0]['insurance']
+#     insurance = supabase.table('costs').select('insurance_cost').execute()
+#     insurance = insurance.data[0]['insurance']
 
-    return trucker + fuel + leasing + maintenance + insurance
+#     return trucker + fuel + leasing + maintenance + insurance
