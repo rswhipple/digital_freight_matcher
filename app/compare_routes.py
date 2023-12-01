@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, json
+from flask import Flask, json
 from supabase import create_client, Client
 import something
 from pprint import pprint
@@ -80,19 +80,6 @@ def check_points(pickup, dropoff):
       AND ST_LineLocatePoint(r.route_geom, {pickup}) <= ST_LineLocatePoint(r.route_geom, {dropoff})
     LIMIT 1;
   """
-
-# query = """
-#     SELECT r.route_id, ST_LineLocatePoint(r.route_geom, ST_GeomFromText(%s)) AS closest_point_to_p, 
-#         ST_LineLocatePoint(r.route_geom, ST_GeomFromText(%s)) AS closest_point_to_d
-#     FROM {} r
-#     WHERE ST_DWithin(r.route_geom, ST_GeomFromText(%s), 1000)
-#       AND ST_DWithin(r.route_geom, ST_GeomFromText(%s), 1000)
-#       AND ST_LineLocatePoint(r.route_geom, ST_GeomFromText(%s)) <= ST_LineLocatePoint(r.route_geom, ST_GeomFromText(%s))
-#     LIMIT 1;
-# """.format(routes_table)
-
-# # Assuming pickup and dropoff are strings representing WKT (Well-Known Text) of the geometries
-# cursor.execute(query, (pickup, dropoff, pickup, dropoff, pickup, dropoff))
   
   # Execute the query
   response = supabase.query(query)
@@ -122,26 +109,6 @@ def check_capacity(order_data, route_match):
       AND ST_Intersects(route_geom, ST_MakeLine({closest_pickup}, {closest_dropoff}))
   """
 
-  # # Execute the query
-  # response = supabase.rpc(
-  #     "check_capacity",  # The name of my PostgreSQL function
-  #     {
-  #         "_order_vol": order_vol,
-  #         "_order_weight": order_weight,
-  #         "_route_id": route_id,
-  #         "_closest_pickup": closest_pickup,
-  #         "_closest_dropoff": closest_dropoff
-  #     }
-  # ).execute()
-
-  # # Check the response
-  # if response.status_code == 200:
-  #     data = response.get_json()  # Extract the data from the response
-  #     capacity_available = data.get('result')  # Assuming 'result' is the key for the returned value
-  #     print("Capacity Available:", capacity_available)
-  # else:
-  #     print("Error:", response.status_code)
-
   # Function and parameters
   function_name = "check_capacity"
   payload = {
@@ -160,7 +127,7 @@ def check_capacity(order_data, route_match):
   }
 
   # Make the request
-  response = request.post(
+  response = requests.post(
       f"{something.url}/rest/v1/rpc/{function_name}",
       headers=headers,
       data=json.dumps(payload)
@@ -169,7 +136,7 @@ def check_capacity(order_data, route_match):
   # Check response
   if response.status_code == 200:
       result = response.json()
-      capacity_available = result.data[0] if isinstance(result.data, list) else result.data
+      capacity_available = result.data[0]
       return capacity_available
   else:
       print(f"Error: {response.status_code}")
@@ -195,7 +162,7 @@ def import_route(points):
   url = f"https://api.mapbox.com/directions/v5/mapbox/driving/{coordinates}?alternatives=true&geometries=geojson&language=en&overview=full&steps=true&access_token={access_token}"
 
   # Make the API request
-  response = request.get(url)
+  response = requests.get(url)
 
   # Check if the request was successful 
   if response.status_code == 200:
@@ -257,18 +224,13 @@ def add_order_to_route(route_match, order_data, order_id):
     pickup = order_data["pick_up"]
     dropoff = order_data["drop_off"]
 
-  # Steps to merge pickup and dropoff points into existing route
-    # retrieve current route_geom from capacity table
-    route_geom_response = supabase.table('capacity').select('route_geom').eq('capacity_route_id', route_id).execute()
+    # Steps to merge pickup and dropoff points into existing route
+    # retrieve data from routes table
+    route_table_data = supabase.table('routes').select('route_geom', 'points').eq('id', route_id).execute()
     
-    if route_geom_response.error is None and route_geom_response.data:
-      route_geom = route_geom_response.data[0]['route_geom']
-
-    # retrieve current points from routes table
-    points_response = supabase.table('routes').select('points').eq('id', route_id).execute()
-    
-    if points_response.error is None and points_response.data:
-      points = points_response.data[0]['points']
+    if route_table_data.error is None and route_table_data.data:
+      route_geom = route_table_data.data[0]['route_geom']
+      points = route_table_data.data[0]['points']
 
     # add closest_pickup and closest_dropoff to points 
     points.extend([closest_pickup, closest_dropoff])
@@ -276,16 +238,16 @@ def add_order_to_route(route_match, order_data, order_id):
     # call determine_order to get the new list of merged points
     ordered_points = determine_order(points, route_geom)
 
-  # Update route table
+    # TODO: in ordered_points replace closest_pickup with pickup AND closest_dropoff with dropoff   
+
+    # Update route table
     route_data = update_routes_table(ordered_points, route_id)
     
-  # Update capacity table
+    # Update capacity table
     update_capacity_table(route_data, ordered_points, route_id)
 
-  # Update orders table  (confirm)
+    # Update orders table  (confirm)
     response = supabase.table('orders').update({'confirmed': True}).eq('id', order_id).execute()
-
-  # Update margins table
 
     return True
 
@@ -312,11 +274,14 @@ def create_new_route(order_id, order_data):
 
     route_id = route_id.data[0]["id"]
 
-    # add route_id to order
+    # TODO add route_id to order
 
-    # call mapbox api and make updates
+    # get new route geom, total time and total distance from mapbox api
+    route_data = import_route(points)
 
-    # 
+    # TODO update routes table
+    # TODO update coordinates table
+
 
     return route_id
 

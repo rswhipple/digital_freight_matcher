@@ -97,28 +97,3 @@ def add_order_database():
 if __name__ == '__main__':
   app.run()
 
-
-# @app.route('/confirm_order', methods=['POST'])
-# def confirm_order():
-#     # Check if the request contains JSON data
-#     if request.is_json:
-#         try:
-#             data = request.get_json()
-
-#             # Access specific data from the JSON input
-#             order_id = data.get("order_id", 0)
-
-#             # Add order to the routes table
-#             route_info = add_order_to_route(order_id)                  #*** tony's function, needs to return route_id and route_name ***
-
-#             # Update order status to confirmed
-#             response = supabase.table('orders').update("confirmed", True).eq("id", order_id).execute()
-
-#             message = f"Order has been confirmed and added to route {route_info['route_name']}, id {route_info['route_id']}."
-#             return message # this will need to be changed
-
-#         except Exception as e:
-#             return jsonify({"error": "Invalid input format or processing error"})
-#     else:
-#         return jsonify({"error": "Invalid request format (JSON expected)"})
-    
