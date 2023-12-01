@@ -28,10 +28,10 @@ def process_order(order_data, order_id):
 
   # if there is no match, create a new route
   else: 
-    route_id = create_new_route(order_id, order_data)
+    route_id = create_new_route(order_id)
         
   if route_match:
-    price = calculate_price(order_id)
+    price = calculate_price(order_id, order_data, route_id)
     return price
   
   else:
@@ -65,18 +65,31 @@ def compare_routes(order_data):
 # pickup and dropoff points come from orders table
 def check_points(pickup, dropoff):
   # create local variables
-  capacity_table = "capacity"
+  routes_table = "routes"
 
   # Query to check if the point falls on any route
   query = f"""
-    SELECT route_id, ST_LineLocatePoint(r.route_geom, {pickup}) AS closest_point_to_p, 
+    SELECT r.route_id, ST_LineLocatePoint(r.route_geom, {pickup}) AS closest_point_to_p, 
         ST_LineLocatePoint(r.route_geom, {dropoff}) AS closest_point_to_d
-    FROM {capacity_table} r
+    FROM {routes_table} r
     WHERE ST_DWithin(r.route_geom, {pickup}, 1000)
       AND ST_DWithin(r.route_geom, {dropoff}, 1000)
       AND ST_LineLocatePoint(r.route_geom, {pickup}) <= ST_LineLocatePoint(r.route_geom, {dropoff})
     LIMIT 1;
   """
+
+# query = """
+#     SELECT r.route_id, ST_LineLocatePoint(r.route_geom, ST_GeomFromText(%s)) AS closest_point_to_p, 
+#         ST_LineLocatePoint(r.route_geom, ST_GeomFromText(%s)) AS closest_point_to_d
+#     FROM {} r
+#     WHERE ST_DWithin(r.route_geom, ST_GeomFromText(%s), 1000)
+#       AND ST_DWithin(r.route_geom, ST_GeomFromText(%s), 1000)
+#       AND ST_LineLocatePoint(r.route_geom, ST_GeomFromText(%s)) <= ST_LineLocatePoint(r.route_geom, ST_GeomFromText(%s))
+#     LIMIT 1;
+# """.format(routes_table)
+
+# # Assuming pickup and dropoff are strings representing WKT (Well-Known Text) of the geometries
+# cursor.execute(query, (pickup, dropoff, pickup, dropoff, pickup, dropoff))
   
   # Execute the query
   response = supabase.query(query)
@@ -217,10 +230,10 @@ def add_order_to_route(route_match, order_data, order_id):
     ordered_points = determine_order(points, route_geom)
 
   # Update route table
-    update_routes_table(ordered_points, route_id)
+    route_data = update_routes_table(ordered_points, route_id)
     
   # Update capacity table
-    update_capacity_table(route_id, ordered_points)
+    update_capacity_table(route_data, ordered_points, route_id)
 
   # Update orders table  (confirm)
     response = supabase.table('orders').update({'confirmed': True}).eq('id', order_id).execute()
@@ -272,10 +285,6 @@ def update_routes_table(ordered_points, route_id):
     # calculate data
     route_data = import_route(ordered_points)
 
-    if route_data is None:
-      print("Error retrieving new route data from Mapbox Api")
-      return
-
     # convert time and distance data
     distance_in_meters = route_data['routes'][0]['distance']
     duration_in_seconds = route_data['routes'][0]['duration']
@@ -295,16 +304,17 @@ def update_routes_table(ordered_points, route_id):
       print("Error during routes table update:", response.error)
       return
     
+    return route_data
+    
 
+def update_capacity_table(route_data, route_id):
+    # create local variables
+    route_geom = route_data['routes'][0]['geometry']                                   
 
+    # calculate new volume and weight info
 
-
-def update_capacity_table(route_id, points):
-    # calculate data
-    route_data = import_route(points)                                        
 
     # insert into 'capacity' table
-    route_geom = route_data['routes'][0]['geometry']
     capacity_row_data = {
       'route_geom':route_geom,
       'capacity_route_id':route_id
@@ -313,8 +323,6 @@ def update_capacity_table(route_id, points):
 
     if response.error:
       print("Error during insert:", response.error)
-
-   
     
     # need to update empty_volume and empty_weight in capacity
 
