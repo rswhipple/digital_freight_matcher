@@ -248,10 +248,16 @@ def add_order_to_route(order_id, order_data, route_match):
     # call determine_order to get the new list of merged points
     ordered_points = determine_order(points, route_geom)
 
-    # TODO: in ordered_points replace closest_pickup with pickup AND closest_dropoff with dropoff   
+    # in ordered_points replace closest_pickup with pickup AND closest_dropoff with dropoff 
+    for point in ordered_points:
+      if point == closest_pickup:
+        point = pickup
+      elif point == closest_dropoff:
+        point =  dropoff
 
     # Update route table
-    route_data = update_routes_table(ordered_points, route_id)
+    # question + do we need the route_data?
+    update_routes_table(ordered_points, route_id)
     
     # Update coordinates table
     update_coordinates_table(route_id, ordered_points, order_id, order_data)
@@ -292,7 +298,7 @@ def create_new_route(order_id, order_data):
     # update routes table
     update_routes_table(points, route_id)
 
-    # TODO create new row in coordinates table with correct data
+    # create new rows in coordinates table with correct data
     insert_coordinates_table(route_id, points, order_data)
 
     # create new row in margins table with margin_route_id
@@ -349,8 +355,15 @@ def update_coordinates_table(route_id, ordered_points, order_id, order_data):
 
     for point in package_points:
       # get current volume and weight data
+      coord_data = supabase.table('coordinates').select('*') \
+            .eq('point', point).eq('coordinate_route_id', route_id).execute()
+
+      if coord_data.error is None:
+        current_empty_vol = coord_data.data[0]['empty_vol']
+        current_empty_weight = coord_data.data[0]['empty_weight']
 
       # calculate new volume and weight available
+      empty_vol = current_empty_vol - order_data['order_vol']
 
       # insert into 'coordinates' table
       coordinates_row_data = {
@@ -365,7 +378,7 @@ def update_coordinates_table(route_id, ordered_points, order_id, order_data):
 
 def insert_coordinates_table(route_id, points, order_data):
     # calculate empty_vol and empty weight
-      # weight per/package * num packages
+    # weight per/package * num packages
     if order_data["package_type"] == 'standard':
       total_order_vol = STD_PACKAGE_VOL * order_data['order_vol']
       empty_vol = TOTAL_TRUCK_VOLUME - total_order_vol
