@@ -36,8 +36,8 @@ def add_order_database():
             # Access specific data from the JSON input
             cargo = data.get("cargo", {})
             packages = cargo.get("packages", [])
-            pick_up = data.get("pick-up", {})   # make sure format is (lon, lat) ******************  this may cause error
-            drop_off = data.get("drop-off", {})
+            pickup = data.get("pick-up", {})   # make sure format is (lon, lat) ******************  this may cause error
+            dropoff = data.get("drop-off", {})
             volume, weight, package_type = packages
             # pick_up = (pick_up.get("longitude", 0), pick_up.get("latitude", 0))
             # drop_off = (drop_off.get("longitude", 0), drop_off.get("latitude", 0))
@@ -47,8 +47,8 @@ def add_order_database():
                 "volume": volume,
                 "weight": weight,
                 "package_type": package_type,
-                "pick_up": pick_up,
-                "drop_off": drop_off,
+                "pickup": pickup,
+                "dropoff": dropoff,
                 "in_range": True,
             }
 
@@ -59,7 +59,7 @@ def add_order_database():
             order_id = response.data[0]["id"]
 
             # Check if order is in range
-            range = is_in_range(pick_up, drop_off)
+            range = is_in_range(pickup, dropoff)
 
             if not range:
                 # Update order in database and return error if out of range

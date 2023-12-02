@@ -5,6 +5,10 @@ from pprint import pprint
 import requests
 
 METERS2MILES = 0.000621371
+TOTAL_TRUCK_VOLUME = 1700   # cubic feet
+TOTAL_TRUCK_WEIGHT = 9180   # pounds
+STD_PACKAGE_VOL = 18
+PALLET_VOL = 64
 
 app = Flask(__name__)
 
@@ -57,8 +61,8 @@ def process_order(order_id, order_data):
 
 def compare_routes(order_data):
   # create local variables
-  pickup = order_data["pick_up"]
-  dropoff = order_data["drop_off"]
+  pickup = order_data["pickup"]
+  dropoff = order_data["dropoff"]
 
   # create pickup and dropoff points ON EXISTING ROUTES
   route_match = check_points(pickup, dropoff)
@@ -227,8 +231,8 @@ def add_order_to_route(order_id, order_data, route_match):
     route_id = route_match[0]["route_id"]
     closest_pickup = route_match[0]["closest_point_to_p"]
     closest_dropoff = route_match[0]["closest_point_to_p"]
-    pickup = order_data["pick_up"]
-    dropoff = order_data["drop_off"]
+    pickup = order_data["pickup"]
+    dropoff = order_data["dropoff"]
 
     # Steps to merge pickup and dropoff points into existing route
     # retrieve data from routes table
@@ -250,7 +254,7 @@ def add_order_to_route(order_id, order_data, route_match):
     route_data = update_routes_table(ordered_points, route_id)
     
     # Update coordinates table
-    update_coordinates_table(ordered_points, route_id, order_id)
+    update_coordinates_table(route_id, ordered_points, order_id, order_data)
 
     # Update orders table  (confirm)
     response = supabase.table('orders').update({'confirmed': True}).eq('id', order_id).execute()
@@ -268,7 +272,7 @@ def create_new_route(order_id, order_data):
     """
     # build new route
     home_base = (-84.3875298776525, 33.754413815792205)
-    points = [home_base, order_data["pick_up"], order_data["drop_off"], home_base]
+    points = [home_base, order_data["pickup"], order_data["dropoff"], home_base]
     new_route = {"points": points}
 
     # insert into 'routes' table
@@ -289,7 +293,7 @@ def create_new_route(order_id, order_data):
     update_routes_table(points, route_id)
 
     # TODO create new row in coordinates table with correct data
-    insert_coordinates_table(points, route_id, order_id)
+    insert_coordinates_table(route_id, points, order_data)
 
     # create new row in margins table with margin_route_id
     response = supabase.table('margins').insert({'margin_route_id': route_id}).execute()
@@ -335,10 +339,18 @@ def update_routes_table(ordered_points, route_id):
     return route_data
     
 
-def update_coordinates_table(ordered_points, route_id, order_id):
-    # transform ordered_points
-    for point in ordered_points:
-      # calculate new volume and weight info
+def update_coordinates_table(route_id, ordered_points, order_id, order_data):
+    # create local variables
+    pickup = order_data['pickup']
+    dropoff = order_data['dropoff']
+
+    # find affected points
+    package_points = order_package_points(ordered_points, pickup, dropoff)
+
+    for point in package_points:
+      # get current volume and weight data
+
+      # calculate new volume and weight available
 
       # insert into 'coordinates' table
       coordinates_row_data = {
@@ -351,14 +363,23 @@ def update_coordinates_table(ordered_points, route_id, order_id):
 
     return True
 
-def insert_coordinates_table(ordered_points, route_id, order_id):
-    # transform ordered_points
-    for point in ordered_points:
-      # calculate new volume and weight info
+def insert_coordinates_table(route_id, points, order_data):
+    # calculate empty_vol and empty weight
+      # weight per/package * num packages
+    if order_data["package_type"] == 'standard':
+      total_order_vol = STD_PACKAGE_VOL * order_data['order_vol']
+      empty_vol = TOTAL_TRUCK_VOLUME - total_order_vol
+      total_order_weight = order_data['weight']   # make sure total weight is provided
+      empty_weight = TOTAL_TRUCK_WEIGHT - total_order_weight
 
+    # transform points into rows for table
+    for point in points:
       # insert into 'coordinates' table
       coordinates_row_data = {
-        'point': point
+        'point': point,
+        'empty_vol': empty_vol,
+        'empty_weight': empty_weight,
+        'coordinate_route_id': route_id
       }
       response = supabase.table('coordinates').insert(coordinates_row_data).execute()
 
@@ -369,8 +390,18 @@ def insert_coordinates_table(ordered_points, route_id, order_id):
 
 
 def determine_order(points, pickup_loc, dropoff_loc, route_geom):
-  #create a new set of points
-  return 
+  # create a new set of points
+  ordered_points = []
+
+  # for each point, check if pickup_loc comes before point, 
+  #   if no, add point
+  #   if yes, add pickup_loc before adding point
+
+  # for each point, check if dropoff_loc comes before point, 
+  #   if no, add point
+  #   if yes, add dropoff_loc before adding point
+
+  return ordered_points
 
 
 def calculate_price(order_id, order_data, route_id):
@@ -398,13 +429,7 @@ def calculate_price(order_id, order_data, route_id):
     points = supabase.table('routes').select('points') \
         .eq('id', route_id).execute()
 
-    for point, index in enumerate(points):
-        if point == pickup:
-            pickup_index = index
-        elif point == dropoff:
-            dropoff_index = index
-            break
-    package_points = point[pickup_index : dropoff_index + 1]
+    package_points = order_package_points(points, pickup, dropoff)
 
     mapbox_data = import_route(package_points)
     distance_meters = mapbox_data['routes'][0]['distance']
@@ -485,4 +510,16 @@ def is_profitable(route_id):
        print("Error updating margins table for route: ", route_id)
          
     return margin > 0
+
+def order_package_points(points, pickup, dropoff):
+  for point, index in enumerate(points):
+    if point == pickup:
+      pickup_index = index
+    elif point == dropoff:
+      dropoff_index = index
+      break
+
+  package_points = point[pickup_index : dropoff_index + 1]
+
+  return package_points
 
