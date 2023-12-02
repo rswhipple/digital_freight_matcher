@@ -70,26 +70,34 @@ def check_points(pickup, dropoff):
   # create local variables
   routes_table = "routes"
 
-  # Query to check if the point falls on any route
-  query = f"""
-    SELECT r.route_id, ST_LineLocatePoint(r.route_geom, {pickup}) AS closest_point_to_p, 
-        ST_LineLocatePoint(r.route_geom, {dropoff}) AS closest_point_to_d
-    FROM {routes_table} r
-    WHERE ST_DWithin(r.route_geom, {pickup}, 1000)
-      AND ST_DWithin(r.route_geom, {dropoff}, 1000)
-      AND ST_LineLocatePoint(r.route_geom, {pickup}) <= ST_LineLocatePoint(r.route_geom, {dropoff})
-    LIMIT 1;
-  """
-  
-  # Execute the query
-  response = supabase.query(query)
-  
-  if response.error is None:
-    route_match = response.data
-    return route_match
-      
+  # Function and parameters
+  function_name = "check_points"
+  payload = {
+      "_pickup": pickup,
+      "_dropoff": dropoff
+  }
+
+  # Headers
+  headers = {
+      "apikey": something.something,
+      "Authorization": f"Bearer {something.something}",
+      "Content-Type": "application/json"
+  }
+
+  # Make the request
+  response = requests.post(
+      f"{something.url}/rest/v1/rpc/{function_name}",
+      headers=headers,
+      data=json.dumps(payload)
+  )
+
+  # Check response
+  if response.status_code == 200:
+      result = response.json()
+      route_match = result.data[0]
+      return route_match
   else:
-    print(response.error)
+      print(f"Error: {response.status_code}")
 
 
 def check_capacity(order_data, route_match):
@@ -100,14 +108,6 @@ def check_capacity(order_data, route_match):
   order_vol = order_data["order_vol"]
   order_weight = order_data["order_weight"]
   coordinates_table = "coordinates"
-
-  # Query to check if route has capacity
-  query = f"""
-    SELECT empty_vol > {order_vol} AND empty_weight > {order_weight} AS capacity
-    FROM {coordinates_table}
-    WHERE {route_id} = route_id
-      AND ST_Intersects(route_geom, ST_MakeLine({closest_pickup}, {closest_dropoff}))
-  """
 
   # Function and parameters
   function_name = "check_capacity"
@@ -243,8 +243,8 @@ def add_order_to_route(route_match, order_data, order_id):
     # Update route table
     route_data = update_routes_table(ordered_points, route_id)
     
-    # Update capacity table
-    update_capacity_table(route_data, ordered_points, route_id)
+    # Update coordinates table
+    update_coordinates_table(route_data, ordered_points, route_id)
 
     # Update orders table  (confirm)
     response = supabase.table('orders').update({'confirmed': True}).eq('id', order_id).execute()
@@ -300,7 +300,7 @@ def update_routes_table(ordered_points, route_id):
     # convert time and distance data
     distance_in_meters = route_data['routes'][0]['distance']
     duration_in_seconds = route_data['routes'][0]['duration']
-    total_miles = distance_in_meters * 0.000621371 # (1 meter = 0.000621371 miles)
+    total_miles = distance_in_meters * METERS2MILES # (1 meter = 0.000621371 miles)
     total_time = duration_in_seconds / 60
 
     route_row_data = {
@@ -319,7 +319,7 @@ def update_routes_table(ordered_points, route_id):
     return route_data
     
 
-def update_capacity_table(route_data, route_id):
+def update_coordinates_table(route_data, route_id):
     # create local variables
     route_geom = route_data['routes'][0]['geometry']                                   
 
@@ -427,9 +427,6 @@ def is_profitable(route_id):
     return: True if profitable, False otherwise
     """
     # get total price of orders on route
-    # price_list = supabase.table('orders').select('price') \
-    #     .eq('order_route_id', route_id).execute()
-    # total_price = sum(price['price'] for price in price_list.data)
     function_name = "calculate_total_price"
     payload = { "_route_id": route_id }
 
@@ -465,37 +462,9 @@ def is_profitable(route_id):
     total_cost_per_mile = cost_table_data.data[0]['total_cost']
     markup = cost_table_data.data[0]['markup']
 
+    # calculate OTC (operational truck cost) and margin
     OTC = total_miles * total_cost_per_mile
     margin = (total_price - OTC) / OTC
 
     return margin > 0
 
-
-# def calc_total_costs():
-#     """Calculate total costs from spreadsheet
-
-#     Total = Trucker + Fuel + Leasing + Maintenance + Insurance
-
-#     return: total cost
-#     note: 'costs' table setup wrong direction
-#     """
-#     # what does the note above mean? RWS
-#     # total costs are already calculated in the costs table  RWS
-
-
-#     trucker = supabase.table('costs').select('trucker_cost').execute()
-#     trucker = trucker.data[0]['trucker']
-
-#     fuel = supabase.table('costs').select('fuel_cost').execute()
-#     fuel = fuel.data[0]['fuel']
-
-#     leasing = supabase.table('costs').select('leasing_cost').execute()
-#     leasing = leasing.data[0]['leasing']
-
-#     maintenance = supabase.table('costs').select('maintenance_cost').execute()
-#     maintenance = maintenance.data[0]['maintenance']
-
-#     insurance = supabase.table('costs').select('insurance_cost').execute()
-#     insurance = insurance.data[0]['insurance']
-
-#     return trucker + fuel + leasing + maintenance + insurance
