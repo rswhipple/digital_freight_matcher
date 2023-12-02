@@ -1,8 +1,10 @@
-1. rewrite check_points query as a postgresql function and http api Call - Beki
+DONE 1. rewrite check_points query as a postgresql function and http api Call - Beki
 2. rewrite add_order_to_route() with current logic - Tony
 3. complete create_new_route() function - Tony
-4. complete update_capacity_table() function - Beki
-5. double check change_capacity() function - Beki
+4. complete update_coordinate_table() function - Beki
+5. create insert_coordinate_table() function - Beki
 6. complete determine_order() function - Beki
 7. update routes table with 5 basic routes - Tony
 DONE 8. update costs - Beki
+9. test what supabase returns when a db update() or insert() is unsuccessful
+10. figure out how printing errors is handled, make consistent throughout program

@@ -43,7 +43,7 @@ def add_order_database():
             # drop_off = (drop_off.get("longitude", 0), drop_off.get("latitude", 0))
 
             # Process the data or return a response as needed
-            response_data = {
+            order_data = {
                 "volume": volume,
                 "weight": weight,
                 "package_type": package_type,
@@ -53,7 +53,7 @@ def add_order_database():
             }
 
             # Add items to database
-            response = supabase.table('orders').insert(response_data).execute()
+            response = supabase.table('orders').insert(order_data).execute()
 
             # Get order_id from response
             order_id = response.data[0]["id"]
@@ -67,7 +67,7 @@ def add_order_database():
                 return jsonify({"error": "No possible routes, order is out of range"})
 
             # Process order
-            price = process_order(response_data, order_id)
+            price = process_order(order_id, order_data)
 
             if price:
                 # Update order in database

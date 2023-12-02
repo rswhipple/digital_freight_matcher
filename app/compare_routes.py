@@ -11,7 +11,7 @@ app = Flask(__name__)
 supabase = create_client(something.url, something.something)
   
   
-def process_order(order_data, order_id):
+def process_order(order_id, order_data):
   # create local variables
   order_table = "orders"
   price = 0
@@ -20,28 +20,39 @@ def process_order(order_data, order_id):
   # check if order fits on an existing route
   route_match = compare_routes(order_data)   
 
-  # if route match is found, add order to route
+  # if route match is found
   if route_match:
     # add route_id to order
     route_id = route_match[0]["route_id"]
     order_update = supabase.table(order_table).update({"order_route_id": route_id}).eq("id", order_id).execute()
     assert len(order_update.data) > 0, "Error: Unable to update orders table with route_id"
+
     # add order to route
-    add_order_to_route(route_match, order_data, order_id)
+    add_order_to_route(order_id, order_data, route_match)
+
     # if route is_original() calculate price 
-    price = calculate_price(order_id, order_data, route_id)
-    # else if route is 
-    return price
+    if is_original(route_id):
+      price = calculate_price(order_id, order_data, route_id)
+    # else check if it is profitable before calculating price
+    else:
+      if is_profitable(route_id):
+        price = calculate_price(order_id, order_data, route_id)
+        # TODO calculate price for every order in route
+      else:
+        print("No profitable route found, order stored for future")
   
   # if there is no match, create a new route and check whether the route is profitable
   else: 
     route_id = create_new_route(order_id)
     results = is_profitable(route_match) 
     if results:
-      message = f"New profitable route found, route_id {route_match[0]['route_id']}."
-      return message
+      # calculate price
+      price = calculate_price(order_id, order_data, route_id)
+      print(f"New profitable route found, route_id {route_id}.")
     else:
-      return None
+      print("No profitable route found, order stored for future")
+  
+  return price
     
 
 def compare_routes(order_data):
@@ -191,16 +202,13 @@ def is_in_range(pick_up, drop_off):
   else:
     return False
   
-def is_original(route_match):
+def is_original(route_id):
   """checks if route is one of the standard 5 routes
 
   route_match: object from supabase query
 
   return: True if yes, False otherwise
   """
-  # create local variables
-  route_id = route_match[0]["route_id"]
-
   if route_id >= 1 and route_id <= 5:
     return True
   else:
@@ -208,7 +216,7 @@ def is_original(route_match):
 
 # Tony's functions starts here
 
-def add_order_to_route(route_match, order_data, order_id):
+def add_order_to_route(order_id, order_data, route_match):
     """adds an order to a given route
 
     order_id: int -- id of order to add to a route
