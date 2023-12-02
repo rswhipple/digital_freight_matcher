@@ -236,17 +236,19 @@ def add_order_to_route(order_id, order_data, route_match):
 
     # Steps to merge pickup and dropoff points into existing route
     # retrieve data from routes table
-    route_table_data = supabase.table('routes').select('route_geom', 'points').eq('id', route_id).execute()
+    route_table_data = supabase.table('routes').select('route_geom', 'points') \
+                                                .eq('id', route_id).execute()
     
     if route_table_data.error is None and route_table_data.data:
       route_geom = route_table_data.data[0]['route_geom']
       points = route_table_data.data[0]['points']
 
     # add closest_pickup and closest_dropoff to points 
-    points.extend([closest_pickup, closest_dropoff])
+    # points.extend([closest_pickup, closest_dropoff])
 
     # call determine_order to get the new list of merged points
-    ordered_points = determine_order(points, route_geom)
+    ordered_points = determine_order(points, route_id, \
+                        closest_pickup, closest_dropoff, pickup, dropoff)
 
     # in ordered_points replace closest_pickup with pickup AND closest_dropoff with dropoff 
     for point in ordered_points:
@@ -259,7 +261,11 @@ def add_order_to_route(order_id, order_data, route_match):
     # question + do we need the route_data?
     update_routes_table(ordered_points, route_id)
     
-    # Update coordinates table
+    # Insert new points in coordinates table
+    new_points = [pickup, dropoff]
+    insert_coordinates_table(route_id, new_points, order_data)
+
+    # Update empty_vol and empty_weight in coordinates table
     update_coordinates_table(route_id, ordered_points, order_id, order_data)
 
     # Update orders table  (confirm)
@@ -345,7 +351,7 @@ def update_routes_table(ordered_points, route_id):
     return route_data
     
 
-def update_coordinates_table(route_id, ordered_points, order_id, order_data):
+def update_coordinates_table(route_id, ordered_points, order_data):
     # create local variables
     pickup = order_data['pickup']
     dropoff = order_data['dropoff']
@@ -364,12 +370,17 @@ def update_coordinates_table(route_id, ordered_points, order_id, order_data):
 
       # calculate new volume and weight available
       empty_vol = current_empty_vol - order_data['order_vol']
+      empty_weight = current_empty_weight - order_data['order_weight']
 
       # insert into 'coordinates' table
       coordinates_row_data = {
-        'point': point
+        'point': point,
+        'empty_vol': empty_vol,
+        'empty_weight': empty_weight
       }
-      response = supabase.table('coordinates').insert(coordinates_row_data).execute()
+
+      response = supabase.table('coordinates').update(coordinates_row_data) \
+              .eq('point', point).eq('coordinate_route_id', route_id).execute()
 
       if response.error:
         print("Error during insert:", response.error)
@@ -402,13 +413,53 @@ def insert_coordinates_table(route_id, points, order_data):
     return True
 
 
-def determine_order(points, pickup_loc, dropoff_loc, route_geom):
+def determine_order(points, route_id, closest_pickup, closest_dropoff, pickup, dropoff):
+  # Supabase function name
+  function_name = "first_point"
+
+  # Headers
+  headers = {
+      "apikey": something.something,
+      "Authorization": f"Bearer {something.something}",
+      "Content-Type": "application/json"
+  }
+
   # create a new set of points
   ordered_points = []
 
-  # for each point, check if pickup_loc comes before point, 
+  # for each point, check if closest_pickup comes before point, 
   #   if no, add point
   #   if yes, add pickup_loc before adding point
+  for point in points:
+    payload = {
+      "_route_id": route_id,
+      "_point_a": point,
+      "_point_b": closest_pickup,
+      "_pickup": pickup,
+      "_dropoff": dropoff
+    }
+
+    # Make the request
+    response = requests.post(
+      f"{something.url}/rest/v1/rpc/{function_name}",
+      headers=headers,
+      data=json.dumps(payload)
+    )
+
+    # Check response
+    if response.status_code == 200:
+      result = response.json()
+      next_point = result.data[0]['first_point']
+      ordered_points.append(next_point)
+      if next_point == closest_pickup:
+        payload['_point_b'] = closest_dropoff
+      elif next_point == closest_dropoff:
+        break
+    else:
+      print(f"Error in determine_order(): {response.status_code}")
+  
+
+
 
   # for each point, check if dropoff_loc comes before point, 
   #   if no, add point
