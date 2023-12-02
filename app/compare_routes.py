@@ -28,7 +28,12 @@ def process_order(order_id, order_data):
   if route_match:
     # add route_id to order
     route_id = route_match[0]["route_id"]
-    order_update = supabase.table(order_table).update({"order_route_id": route_id}).eq("id", order_id).execute()
+   try:
+           order_update = supabase.table(order_table).update({"order_route_id": route_id}).eq("id", order_id).execute()
+   except:
+       print(f"process_order: table could not be updated")
+       exit(1)
+
     assert len(order_update.data) > 0, "Error: Unable to update orders table with route_id"
 
     # add order to route
@@ -236,7 +241,12 @@ def add_order_to_route(order_id, order_data, route_match):
 
     # Steps to merge pickup and dropoff points into existing route
     # retrieve data from routes table
-    route_table_data = supabase.table('routes').select('route_geom', 'points').eq('id', route_id).execute()
+   try:
+           route_table_data = supabase.table('routes').select('route_geom', 'points').eq('id', route_id).execute()
+   except:
+       print("add_order_to_route: route_geom and points not found in routes")
+       exit(1)
+
     
     if route_table_data.error is None and route_table_data.data:
       route_geom = route_table_data.data[0]['route_geom']
@@ -263,7 +273,12 @@ def add_order_to_route(order_id, order_data, route_match):
     update_coordinates_table(route_id, ordered_points, order_id, order_data)
 
     # Update orders table  (confirm)
-    response = supabase.table('orders').update({'confirmed': True}).eq('id', order_id).execute()
+   try:
+           response = supabase.table('orders').update({'confirmed': True}).eq('id', order_id).execute()
+   except:
+       print("add_order_to_route: update of orders table failed")
+       exit(1)
+
 
     return True
 
@@ -282,7 +297,12 @@ def create_new_route(order_id, order_data):
     new_route = {"points": points}
 
     # insert into 'routes' table
-    route_id = supabase.table('routes').insert(new_route).execute()
+   try:
+           route_id = supabase.table('routes').insert(new_route).execute()
+   except:
+       print("create_new_route: insert of new_route failed in table routes")
+       exit(1)
+
 
     if route_id.error:
       print("Error during insert:", route_id.error)
@@ -291,9 +311,11 @@ def create_new_route(order_id, order_data):
     route_id = route_id.data[0]["id"]
 
     # add route_id to order
-    response = supabase.table('orders').update({'order_route_id': route_id}).eq('id', order_id).execute()
-    if response.error:
-       print(f"Error adding route_id {route_id} to order with order_id {order_id}")
+   try:
+           response = supabase.table('orders').update({'order_route_id': route_id}).eq('id', order_id).execute()
+   except:
+       print("create_new_route: update of orders table failed")
+       exit(1)
 
     # update routes table
     update_routes_table(points, route_id)
@@ -302,10 +324,11 @@ def create_new_route(order_id, order_data):
     insert_coordinates_table(route_id, points, order_data)
 
     # create new row in margins table with margin_route_id
-    response = supabase.table('margins').insert({'margin_route_id': route_id}).execute()
-
-    if response.error:
-      print("Error creating margins table row for new route")
+   try:
+           response = supabase.table('margins').insert({'margin_route_id': route_id}).execute()
+   except:
+       print("create_new_route: Error creating margins table row for new route")
+       exit(1)
 
     return route_id
 
@@ -336,12 +359,12 @@ def update_routes_table(ordered_points, route_id):
     }
 
     # update routes table
-    response = supabase.tables('routes').update(route_row_data).eq('id', route_id).execute()
+   try:
+           response = supabase.tables('routes').update(route_row_data).eq('id', route_id).execute()
+   except:
+       print("update_routes_table: Error during routes table update:", response.error)
+       exit(1)
 
-    if response.error:
-      print("Error during routes table update:", response.error)
-      return
-    
     return route_data
     
 
@@ -355,12 +378,15 @@ def update_coordinates_table(route_id, ordered_points, order_id, order_data):
 
     for point in package_points:
       # get current volume and weight data
-      coord_data = supabase.table('coordinates').select('*') \
+   try:
+             coord_data = supabase.table('coordinates').select('*') \
             .eq('point', point).eq('coordinate_route_id', route_id).execute()
+   except:
+       print("update_coordinates_table: coordinates table cannot select *")
+       exit(1)
 
-      if coord_data.error is None:
-        current_empty_vol = coord_data.data[0]['empty_vol']
-        current_empty_weight = coord_data.data[0]['empty_weight']
+       current_empty_vol = coord_data.data[0]['empty_vol']
+       current_empty_weight = coord_data.data[0]['empty_weight']
 
       # calculate new volume and weight available
       empty_vol = current_empty_vol - order_data['order_vol']
@@ -369,10 +395,11 @@ def update_coordinates_table(route_id, ordered_points, order_id, order_data):
       coordinates_row_data = {
         'point': point
       }
-      response = supabase.table('coordinates').insert(coordinates_row_data).execute()
-
-      if response.error:
-        print("Error during insert:", response.error)
+   try:
+         response = supabase.table('coordinates').insert(coordinates_row_data).execute()
+   except:
+       print("update_coordinates_table: coordinates table cannot insert")
+       exit(1)
 
     return True
 
@@ -394,10 +421,11 @@ def insert_coordinates_table(route_id, points, order_data):
         'empty_weight': empty_weight,
         'coordinate_route_id': route_id
       }
-      response = supabase.table('coordinates').insert(coordinates_row_data).execute()
-
-      if response.error:
-        print("Error during insert:", response.error)
+   try:
+             response = supabase.table('coordinates').insert(coordinates_row_data).execute()
+   except:
+       print("insert_coordinates_table: Error during insert:", response.error)
+       exit(1)
 
     return True
 
@@ -425,13 +453,23 @@ def calculate_price(order_id, order_data, route_id):
     return: price as float
     """
     # query number of packages
-    num_packages = supabase.table('orders').select('volume') \
+   try:
+           num_packages = supabase.table('orders').select('volume') \
         .eq('id', order_id).execute()
+   except:
+       print("calculate_price: orders table cannot select volume")
+       exit(1)
+
     num_packages = num_packages.data[0]['volume']
 
     # query pallet cost per mile and markup
-    cost_data = supabase.table('costs') \
+   try:
+           cost_data = supabase.table('costs') \
         .select('package_cost_per_mile', 'markup').execute()
+   except:
+       print("calculate_price: costs table cannot sellect package_cost_per_mile or markup")
+       exit(1)
+
     package_cost_per_mile = cost_data.data[0]['package_cost_per_mile']
     markup = cost_data.data[0]['markup']
 
@@ -439,8 +477,12 @@ def calculate_price(order_id, order_data, route_id):
     pickup = order_data['pick_up']
     dropoff = order_data['drop_off']
 
-    points = supabase.table('routes').select('points') \
+   try:
+           points = supabase.table('routes').select('points') \
         .eq('id', route_id).execute()
+   except:
+       print("calculate_price: routes table cannot select points")
+       exit(1)
 
     package_points = order_package_points(points, pickup, dropoff)
 
@@ -452,7 +494,11 @@ def calculate_price(order_id, order_data, route_id):
     price = num_packages * package_cost_per_mile * package_miles * (1 + markup)
 
     # update order_id with price
-    response = supabase.table('orders').update({'price': price}).eq('id', order_id).execute()
+   try:
+           response = supabase.table('orders').update({'price': price}).eq('id', order_id).execute()
+   except:
+       print("calculate_price: orders table cannot update price")
+       exit(1)
 
     return price
 
@@ -495,13 +541,23 @@ def is_profitable(route_id):
         print(f"Error: {response.status_code}")
 
     # query route distance
-    total_miles = supabase.table('routes').select('id', 'total_miles') \
+   try:
+           total_miles = supabase.table('routes').select('id', 'total_miles') \
         .eq('id', route_id).execute()
+   except:
+       print("is_profitable: routes table cannot select id or total_miles")
+       exit(1)
+
     total_miles = total_miles.data[0]['total_miles']
 
     # query cost data
-    cost_table_data = supabase.table('costs') \
+   try:
+           cost_table_data = supabase.table('costs') \
         .select('total_cost', 'markup').execute()
+   except:
+       print("is_profitable: costs table cannot select total_cost or markup")
+       exit(1)
+
     total_cost_per_mile = cost_table_data.data[0]['total_cost']
     markup = cost_table_data.data[0]['markup']
 
@@ -516,12 +572,12 @@ def is_profitable(route_id):
        'income': total_price
     }
 
-    result = supabase.table('margins').update(margins_row_data).eq('margin_route_id', route_id).execute()
+   try:
+        result = supabase.table('margins').update(margins_row_data).eq('margin_route_id', route_id).execute()
+   except:
+       print("is_profitable: Error updating margins table for route: ", route_id)
+       exit(1)
 
-    # TODO perform tests to see what is returned from SUPABASE when an entry can't be found
-    if result.error:
-       print("Error updating margins table for route: ", route_id)
-         
     return margin > 0
 
 def order_package_points(points, pickup, dropoff):
