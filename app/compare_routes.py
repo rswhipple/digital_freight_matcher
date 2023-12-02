@@ -16,212 +16,212 @@ supabase = create_client(something.url, something.something)
   
   
 def process_order(order_id, order_data):
-  # create local variables
-  order_table = "orders"
-  price = 0
-  route_id = 0
+    # create local variables
+    order_table = "orders"
+    price = 0
+    route_id = 0
 
-  # check if order fits on an existing route
-  route_match = compare_routes(order_data)   
+    # check if order fits on an existing route
+    route_match = compare_routes(order_data)   
 
-  # if route match is found
-  if route_match:
-    # add route_id to order
-    route_id = route_match[0]["route_id"]
-   try:
-           order_update = supabase.table(order_table).update({"order_route_id": route_id}).eq("id", order_id).execute()
-   except:
-       print(f"process_order: table could not be updated")
-       exit(1)
+    # if route match is found
+    if route_match:
+        # add route_id to order
+        route_id = route_match[0]["route_id"]
+        try:
+            order_update = supabase.table(order_table).update({"order_route_id": route_id}).eq("id", order_id).execute()
+        except:
+            print(f"process_order: table could not be updated")
+            exit(1)
 
-    assert len(order_update.data) > 0, "Error: Unable to update orders table with route_id"
+        assert len(order_update.data) > 0, "Error: Unable to update orders table with route_id"
 
-    # add order to route
-    add_order_to_route(order_id, order_data, route_match)
+        # add order to route
+        add_order_to_route(order_id, order_data, route_match)
 
-    # if route is_original() calculate price 
-    if is_original(route_id):
-      price = calculate_price(order_id, order_data, route_id)
-    # else check if it is profitable before calculating price
-    else:
-      if is_profitable(route_id):
-        price = calculate_price(order_id, order_data, route_id)
-        # TODO calculate price for every order in route
-      else:
-        print("No profitable route found, order stored for future")
+        # if route is_original() calculate price 
+        if is_original(route_id):
+            price = calculate_price(order_id, order_data, route_id)
+        # else check if it is profitable before calculating price
+        else:
+            if is_profitable(route_id):
+                price = calculate_price(order_id, order_data, route_id)
+                # TODO calculate price for every order in route
+            else:
+                print("No profitable route found, order stored for future")
   
   # if there is no match, create a new route and check whether the route is profitable
-  else: 
-    route_id = create_new_route(order_id)
-    results = is_profitable(route_match) 
-    if results:
-      # calculate price
-      price = calculate_price(order_id, order_data, route_id)
-      print(f"New profitable route found, route_id {route_id}.")
-    else:
-      print("No profitable route found, order stored for future")
-  
-  return price
+    else: 
+        route_id = create_new_route(order_id)
+        results = is_profitable(route_match) 
+        if results:
+        # calculate price
+            price = calculate_price(order_id, order_data, route_id)
+            print(f"New profitable route found, route_id {route_id}.")
+        else:
+            print("No profitable route found, order stored for future")
+    
+    return price
     
 
 def compare_routes(order_data):
-  # create local variables
-  pickup = order_data["pickup"]
-  dropoff = order_data["dropoff"]
+    # create local variables
+    pickup = order_data["pickup"]
+    dropoff = order_data["dropoff"]
 
-  # create pickup and dropoff points ON EXISTING ROUTES
-  route_match = check_points(pickup, dropoff)
+    # create pickup and dropoff points ON EXISTING ROUTES
+    route_match = check_points(pickup, dropoff)
 
-  if route_match:
-    capacity = check_capacity(order_data, route_match)
+    if route_match:
+        capacity = check_capacity(order_data, route_match)
 
-    if capacity:
-      return route_match
+        if capacity:
+            return route_match
+        else:
+            return None
     else:
-      return None
-  else:
-    return None
+        return None
     
   
 # pickup and dropoff points come from orders table
 def check_points(pickup, dropoff):
-  # create local variables
-  routes_table = "routes"
+    # create local variables
+    routes_table = "routes"
 
-  # Function and parameters
-  function_name = "check_points"
-  payload = {
-      "_pickup": pickup,
-      "_dropoff": dropoff
-  }
+    # Function and parameters
+    function_name = "check_points"
+    payload = {
+        "_pickup": pickup,
+        "_dropoff": dropoff
+    }
 
-  # Headers
-  headers = {
-      "apikey": something.something,
-      "Authorization": f"Bearer {something.something}",
-      "Content-Type": "application/json"
-  }
+    # Headers
+    headers = {
+        "apikey": something.something,
+        "Authorization": f"Bearer {something.something}",
+        "Content-Type": "application/json"
+    }
 
-  # Make the request
-  response = requests.post(
-      f"{something.url}/rest/v1/rpc/{function_name}",
-      headers=headers,
-      data=json.dumps(payload)
-  )
+    # Make the request
+    response = requests.post(
+        f"{something.url}/rest/v1/rpc/{function_name}",
+        headers=headers,
+        data=json.dumps(payload)
+    )
 
-  # Check response
-  if response.status_code == 200:
-      result = response.json()
-      route_match = result.data[0]
-      return route_match
-  else:
-      print(f"Error: {response.status_code}")
+    # Check response
+    if response.status_code == 200:
+        result = response.json()
+        route_match = result.data[0]
+        return route_match
+    else:
+        print(f"Error: {response.status_code}")
 
 
 def check_capacity(order_data, route_match):
-  # create local variables
-  route_id = route_match[0]["route_id"]
-  closest_pickup = route_match[0]["closest_point_to_p"]
-  closest_dropoff = route_match[0]["closest_point_to_d"]
-  order_vol = order_data["order_vol"]
-  order_weight = order_data["order_weight"]
-  coordinates_table = "coordinates"
+    # create local variables
+    route_id = route_match[0]["route_id"]
+    closest_pickup = route_match[0]["closest_point_to_p"]
+    closest_dropoff = route_match[0]["closest_point_to_d"]
+    order_vol = order_data["order_vol"]
+    order_weight = order_data["order_weight"]
+    coordinates_table = "coordinates"
 
-  # Function and parameters
-  function_name = "check_capacity"
-  payload = {
-      "_order_vol": order_vol,
-      "_order_weight": order_weight,
-      "_route_id": route_id,
-      "_closest_pickup": closest_pickup,
-      "_closest_dropoff": closest_dropoff
-  }
+    # Function and parameters
+    function_name = "check_capacity"
+    payload = {
+        "_order_vol": order_vol,
+        "_order_weight": order_weight,
+        "_route_id": route_id,
+        "_closest_pickup": closest_pickup,
+        "_closest_dropoff": closest_dropoff
+    }
 
-  # Headers
-  headers = {
-      "apikey": something.something,
-      "Authorization": f"Bearer {something.something}",
-      "Content-Type": "application/json"
-  }
+    # Headers
+    headers = {
+        "apikey": something.something,
+        "Authorization": f"Bearer {something.something}",
+        "Content-Type": "application/json"
+    }
 
-  # Make the request
-  response = requests.post(
-      f"{something.url}/rest/v1/rpc/{function_name}",
-      headers=headers,
-      data=json.dumps(payload)
-  )
+    # Make the request
+    response = requests.post(
+        f"{something.url}/rest/v1/rpc/{function_name}",
+        headers=headers,
+        data=json.dumps(payload)
+    )
 
-  # Check response
-  if response.status_code == 200:
-      result = response.json()
-      capacity_available = result.data[0]
-      return capacity_available
-  else:
-      print(f"Error: {response.status_code}")
+    # Check response
+    if response.status_code == 200:
+        result = response.json()
+        capacity_available = result.data[0]
+        return capacity_available
+    else:
+        print(f"Error: {response.status_code}")
 
 
 
 
 # pickup and dropoff points come from orders table
 def import_route(points):
-  """imports all route data from MapBox API
+    """imports all route data from MapBox API
 
-  points: a dict made up of points
+    points: a dict made up of points
 
-  return: If successful, all route data in py converted json format. If failure, print error, return nothing
-  """
-  # Mapbox public token
-  access_token = "pk.eyJ1IjoicnN3aGlwcGxlIiwiYSI6ImNsb2RlbnN0eTA2bnoyaXQ4aWc1YmF0eGgifQ.nVC4l7HRRRiAYT-A_4ySuA"
+    return: If successful, all route data in py converted json format. If failure, print error, return nothing
+    """
+    # Mapbox public token
+    access_token = "pk.eyJ1IjoicnN3aGlwcGxlIiwiYSI6ImNsb2RlbnN0eTA2bnoyaXQ4aWc1YmF0eGgifQ.nVC4l7HRRRiAYT-A_4ySuA"
 
-  # Convert each point into a string (longitude, latitude) format
-  coordinates = ';'.join([f"lon, lat" for lon, lat in points])
-  
-  # Construct the API request URL
-  url = f"https://api.mapbox.com/directions/v5/mapbox/driving/{coordinates}?alternatives=true&geometries=geojson&language=en&overview=full&steps=true&access_token={access_token}"
+    # Convert each point into a string (longitude, latitude) format
+    coordinates = ';'.join([f"lon, lat" for lon, lat in points])
+    
+    # Construct the API request URL
+    url = f"https://api.mapbox.com/directions/v5/mapbox/driving/{coordinates}?alternatives=true&geometries=geojson&language=en&overview=full&steps=true&access_token={access_token}"
 
-  # Make the API request
-  response = requests.get(url)
+    # Make the API request
+    response = requests.get(url)
 
-  # Check if the request was successful 
-  if response.status_code == 200:
-    # Return route_data as a json object
-    route_data = response.json()
-    return route_data
-  else:
-    print("Error: Unable to fetch route data")
+    # Check if the request was successful 
+    if response.status_code == 200:
+        # Return route_data as a json object
+        route_data = response.json()
+        return route_data
+    else:
+        print("Error: Unable to fetch route data")
 
 
 def is_in_range(pick_up, drop_off):
-  """checks if order is within area of service
+    """checks if order is within area of service
 
-  pick_up, drop_off: lists (lon, lat)
+    pick_up, drop_off: lists (lon, lat)
 
-  return: True if yes, False otherwise
-  """
-  # Set variable for 
-  home_base = (-84.3875298776525, 33.754413815792205)
+    return: True if yes, False otherwise
+    """
+    # Set variable for 
+    home_base = (-84.3875298776525, 33.754413815792205)
 
-  points = [home_base, pick_up, drop_off, home_base]
+    points = [home_base, pick_up, drop_off, home_base]
 
-  route_data = import_route(points)
+    route_data = import_route(points)
 
-  # Check if route is within 10 hours
-  if route_data["routes"][0]["duration"] < 36000:
-    return True
-  else:
-    return False
+    # Check if route is within 10 hours
+    if route_data["routes"][0]["duration"] < 36000:
+        return True
+    else:
+        return False
   
 def is_original(route_id):
-  """checks if route is one of the standard 5 routes
+    """checks if route is one of the standard 5 routes
 
-  route_match: object from supabase query
+    route_match: object from supabase query
 
-  return: True if yes, False otherwise
-  """
-  if route_id >= 1 and route_id <= 5:
-    return True
-  else:
-    return False
+    return: True if yes, False otherwise
+    """
+    if route_id >= 1 and route_id <= 5:
+        return True
+    else:
+        return False
 
 # Tony's functions starts here
 
@@ -232,7 +232,7 @@ def add_order_to_route(order_id, order_data, route_match):
 
     return: True if successful, False otherwise
     """
-  # Create local variables by parsing route_match + order_data
+    # Create local variables by parsing route_match + order_data
     route_id = route_match[0]["route_id"]
     closest_pickup = route_match[0]["closest_point_to_p"]
     closest_dropoff = route_match[0]["closest_point_to_p"]
@@ -241,15 +241,15 @@ def add_order_to_route(order_id, order_data, route_match):
 
     # Steps to merge pickup and dropoff points into existing route
     # retrieve data from routes table
-   try:
-           route_table_data = supabase.table('routes').select('route_geom', 'points').eq('id', route_id).execute()
-   except:
-       print("add_order_to_route: route_geom and points not found in routes")
-       exit(1)
+    try:
+            route_table_data = supabase.table('routes').select('route_geom', 'points').eq('id', route_id).execute()
+    except:
+        print("add_order_to_route: route_geom and points not found in routes")
+        exit(1)
 
-    if route_table_data.error is None and route_table_data.data:
-      route_geom = route_table_data.data[0]['route_geom']
-      points = route_table_data.data[0]['points']
+
+    route_geom = route_table_data.data[0]['route_geom']
+    points = route_table_data.data[0]['points']
 
     # add closest_pickup and closest_dropoff to points 
     # points.extend([closest_pickup, closest_dropoff])
@@ -260,10 +260,10 @@ def add_order_to_route(order_id, order_data, route_match):
 
     # in ordered_points replace closest_pickup with pickup AND closest_dropoff with dropoff 
     for point in ordered_points:
-      if point == closest_pickup:
-        point = pickup
-      elif point == closest_dropoff:
-        point =  dropoff
+        if point == closest_pickup:
+            point = pickup
+        elif point == closest_dropoff:
+            point =  dropoff
 
     # Update route table
     # question + do we need the route_data?
@@ -277,11 +277,11 @@ def add_order_to_route(order_id, order_data, route_match):
     update_coordinates_table(route_id, ordered_points, order_id, order_data)
 
     # Update orders table  (confirm)
-   try:
-           response = supabase.table('orders').update({'confirmed': True}).eq('id', order_id).execute()
-   except:
-       print("add_order_to_route: update of orders table failed")
-       exit(1)
+    try:
+        response = supabase.table('orders').update({'confirmed': True}).eq('id', order_id).execute()
+    except:
+        print("add_order_to_route: update of orders table failed")
+        exit(1)
 
 
     return True
