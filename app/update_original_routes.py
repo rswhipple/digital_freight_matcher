@@ -1,6 +1,7 @@
 from flask import Flask, json
 from supabase import create_client, Client
 import something
+import compare_routes
 from pprint import pprint
 import requests
 
@@ -36,6 +37,7 @@ def update_original_routes():
         except:
             print(f"update original routes: table could not be updated")
             exit(1)
+
 
 
 

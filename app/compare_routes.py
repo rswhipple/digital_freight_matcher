@@ -448,47 +448,61 @@ def determine_order(points, route_id, closest_pickup, closest_dropoff, pickup, d
         "Content-Type": "application/json"
     }
 
-    # create a new set of points
-    ordered_points = []
-
     # for each point, check if closest_pickup comes before point, 
-    #   if no, add point
-    #   if yes, add pickup_loc before adding point
-    for point in points:
+    #   if yes, insert pickup 
+    for point, index in enumerate(points.copy()):
         payload = {
             "_route_id": route_id,
             "_point_a": point,
             "_point_b": closest_pickup,
-            "_pickup": pickup,
-            "_dropoff": dropoff
         }
 
-    # Make the request
-    response = requests.post(
-        f"{something.url}/rest/v1/rpc/{function_name}",
-        headers=headers,
-        data=json.dumps(payload)
-    )
+        # Make the request
+        response = requests.post(
+            f"{something.url}/rest/v1/rpc/{function_name}",
+            headers=headers,
+            data=json.dumps(payload)
+        )
 
-    # Check response
-    if response.status_code == 200:
-        result = response.json()
-        next_point = result.data[0]['first_point']
-        ordered_points.append(next_point)
+        # Check response
+        if response.status_code == 200:
+            result = response.json()
+            next_point = result.data[0]['first_point']
 
-        if next_point == closest_pickup:  # TODO correct indentation?
-            payload['_point_b'] = closest_dropoff
-        elif next_point == closest_dropoff:
-            break
-    else:
-      print(f"Error in determine_order(): {response.status_code}")
-  
+            if next_point == closest_pickup: 
+                points.insert(index, pickup)
+                break
+        else:
+            print(f"Error in determine_order(): {response.status_code}")
 
-    # for each point, check if dropoff_loc comes before point, 
-    #   if no, add point
-    #   if yes, add dropoff_loc before adding point
+    # for each point, check if closest_dropoff comes before point, 
+    #   if yes, insert dropoff 
+    for point, index in enumerate(points.copy()):
+        payload = {
+            "_route_id": route_id,
+            "_point_a": point,
+            "_point_b": closest_dropoff,
+        }
 
-  return ordered_points
+        # Make the request
+        response = requests.post(
+            f"{something.url}/rest/v1/rpc/{function_name}",
+            headers=headers,
+            data=json.dumps(payload)
+        )
+
+        # Check response
+        if response.status_code == 200:
+            result = response.json()
+            next_point = result.data[0]['first_point']
+
+            if next_point == closest_dropoff: 
+                points.insert(index, dropoff)
+                break
+        else:
+            print(f"Error in determine_order(): {response.status_code}")
+
+    return points
 
 
 def calculate_price(order_id, order_data, route_id):
