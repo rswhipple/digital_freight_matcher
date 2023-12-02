@@ -21,13 +21,14 @@ def update_original_routes():
     home_base = (-84.3875298776525, 33.754413815792205)
 
     for index in range(1, 6):
-        route_id = {index}
-        points = [home_base, route_data["{index}"], home_base]
+        route_id = index
+        points = [home_base, route_data[f"{index}"], home_base]
 
         route_row_data = {
             'id': route_id,
             'points': points
         }
+        print(route_row_data)
 
         try:
             updated_route = supabase.table('routes').update(route_row_data) \
