@@ -42,6 +42,8 @@ def add_order_database():
             pickup = (pick_up.get("longitude", 0), pick_up.get("latitude", 0))
             dropoff = (drop_off.get("longitude", 0), drop_off.get("latitude", 0))
 
+            print(f"pickup: {pickup}; dropoff: {dropoff}")
+
             # Process the data or return a response as needed
             order_data = {
                 "volume": volume,
@@ -79,6 +81,7 @@ def add_order_database():
                 return jsonify({message}) # this will need to be changed
 
         except Exception as e:
+            print(e)
             return jsonify({"error": "Invalid input format or processing error"})
     else:
         return jsonify({"error": "Invalid request format (JSON expected)"})
