@@ -31,31 +31,32 @@ def add_order_database():
             # Access specific data from the JSON input
             cargo = data.get("cargo", {})
             packages = cargo.get("packages", [])
-            pick_up = data.get("pick-up", {})   # make sure format is (lon, lat)
+            pick_up = data.get("pick-up", {})   # make sure format is (lon, lat) ******************  this may cause error
             drop_off = data.get("drop-off", {})
-
             volume, weight, package_type = packages
-            # pick_up = (pick_up.get("longitude", 0), pick_up.get("latitude", 0))
-            # drop_off = (drop_off.get("longitude", 0), drop_off.get("latitude", 0))
+            pickup = (pick_up.get("longitude", 0), pick_up.get("latitude", 0))
+            dropoff = (drop_off.get("longitude", 0), drop_off.get("latitude", 0))
+
+            print(f"pickup: {pickup}; dropoff: {dropoff}")
 
             # Process the data or return a response as needed
-            response_data = {
+            order_data = {
                 "volume": volume,
                 "weight": weight,
                 "package_type": package_type,
-                "pick_up": pick_up,
-                "drop_off": drop_off,
+                "pickup": pickup,
+                "dropoff": dropoff,
                 "in_range": True,
             }
 
             # Add items to database
-            response = supabase.table('orders').insert(response_data).execute()
+            response = supabase.table('orders').insert(order_data).execute()
 
             # Get order_id from response
             order_id = response.data[0]["id"]
 
             # Check if order is in range
-            range = is_in_range(pick_up, drop_off)
+            range = is_in_range(pickup, dropoff)
 
             if not range:
                 # Update order in database and return error if out of range
@@ -63,7 +64,7 @@ def add_order_database():
                 return jsonify({"error": "No possible routes, order is out of range"})
 
             # Process order
-            price = process_order(order_id, response_data)
+            price = process_order(order_id, order_data)
 
             if price:
                 # Update order in database
@@ -75,6 +76,7 @@ def add_order_database():
                 return jsonify({message}) # this will need to be changed
 
         except Exception as e:
+            print(e)
             return jsonify({"error": "Invalid input format or processing error"})
     else:
         return jsonify({"error": "Invalid request format (JSON expected)"})
@@ -130,3 +132,18 @@ if __name__ == '__main__':
 
     # Run everything else aka the app
     app.run()
+
+# def midnight_eraser():
+#     # erase supabase orders here
+
+# schedule.every().day.at("00:00").do(midnight_eraser)
+
+# def run_scheduler():
+#     while True:
+#         schedule.run_pending()
+
+
+
+#if __name__ == '__main__':
+  #app.run()
+
