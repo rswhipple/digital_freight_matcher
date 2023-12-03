@@ -174,13 +174,16 @@ def import_route(points):
     access_token = "pk.eyJ1IjoicnN3aGlwcGxlIiwiYSI6ImNsb2RlbnN0eTA2bnoyaXQ4aWc1YmF0eGgifQ.nVC4l7HRRRiAYT-A_4ySuA"
 
     # Convert each point into a string (longitude, latitude) format
-    coordinates = ';'.join([f"lon, lat" for lon, lat in points])
+    coordinates = '%3B'.join(f'{lon}%2C{lat}' for lon, lat in points)
+    print(coordinates)
     
     # Construct the API request URL
     url = f"https://api.mapbox.com/directions/v5/mapbox/driving/{coordinates}?alternatives=true&geometries=geojson&language=en&overview=full&steps=true&access_token={access_token}"
+    print(url)
 
     # Make the API request
     response = requests.get(url)
+    print(response)
 
     # Check if the request was successful 
     if response.status_code == 200:

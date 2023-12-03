@@ -25,8 +25,9 @@ def update_original_routes():
         points = [home_base, route_anchors[f"{index}"], home_base]
 
         route_data = import_route(points)
+        # pprint(route_data)
 
-        route_geom = route_data.data[0]["route_geom"]
+        route_geom = route_data['routes'][0]["geometry"]['coordinates']
         distance_in_meters = route_data['routes'][0]['distance']
         duration_in_seconds = route_data['routes'][0]['duration']
         total_miles = distance_in_meters * METERS2MILES # (1 meter = 0.000621371 miles)
