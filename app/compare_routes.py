@@ -313,6 +313,7 @@ def create_new_route(order_id, order_data):
         return False
 
     route_id = route_id.data[0]["id"]
+    print(route_id)
 
     # add route_id to order
     try:

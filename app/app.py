@@ -36,11 +36,11 @@ def add_order_database():
             # Access specific data from the JSON input
             cargo = data.get("cargo", {})
             packages = cargo.get("packages", [])
-            pickup = data.get("pick-up", {})   # make sure format is (lon, lat) ******************  this may cause error
-            dropoff = data.get("drop-off", {})
+            pick_up = data.get("pick-up", {})   # make sure format is (lon, lat) ******************  this may cause error
+            drop_off = data.get("drop-off", {})
             volume, weight, package_type = packages
-            # pick_up = (pick_up.get("longitude", 0), pick_up.get("latitude", 0))
-            # drop_off = (drop_off.get("longitude", 0), drop_off.get("latitude", 0))
+            pickup = (pick_up.get("longitude", 0), pick_up.get("latitude", 0))
+            dropoff = (drop_off.get("longitude", 0), drop_off.get("latitude", 0))
 
             # Process the data or return a response as needed
             order_data = {
