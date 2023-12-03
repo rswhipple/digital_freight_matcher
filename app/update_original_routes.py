@@ -1,9 +1,8 @@
 from flask import Flask, json
 from supabase import create_client, Client
 import something
-import compare_routes
+from compare_routes import *
 from pprint import pprint
-import requests
 
 app = Flask(__name__)
 
@@ -11,7 +10,7 @@ supabase = create_client(something.url, something.something)
 
 def update_original_routes():
     # route data
-    route_data = {
+    route_anchors = {
         "1": (-85.1103924702221, 34.9161210050057),
         "2": (-81.8920767938344, 33.4676716195606),
         "3": (-80.9773396382228, 32.0815296895872),
@@ -23,13 +22,24 @@ def update_original_routes():
 
     for index in range(1, 6):
         route_id = index
-        points = [home_base, route_data[f"{index}"], home_base]
+        points = [home_base, route_anchors[f"{index}"], home_base]
+
+        route_data = import_route(points)
+
+        route_geom = route_data.data[0]["route_geom"]
+        distance_in_meters = route_data['routes'][0]['distance']
+        duration_in_seconds = route_data['routes'][0]['duration']
+        total_miles = distance_in_meters * METERS2MILES # (1 meter = 0.000621371 miles)
+        total_time = duration_in_seconds / 60
 
         route_row_data = {
             'id': route_id,
-            'points': points
+            'points': points,
+            'route_geom': route_geom,
+            'total_time': total_time,
+            'total_miles': total_miles
         }
-        print(route_row_data)
+        
 
         try:
             updated_route = supabase.table('routes').update(route_row_data) \
@@ -37,7 +47,4 @@ def update_original_routes():
         except:
             print(f"update original routes: table could not be updated")
             exit(1)
-
-
-
 
