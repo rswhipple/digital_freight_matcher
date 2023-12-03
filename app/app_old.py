@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from supabase import create_client, Client
-# import schedule
-# import time
+import schedule
+import time
 import something
 from pprint import pprint
 from compare_routes import *
@@ -10,11 +10,6 @@ app = Flask(__name__)
 
 supabase = create_client(something.url, something.something)
 
-# Function to Fetch All Orders
-def find_all_orders():
-    response = supabase.table('orders').select("*").execute()
-    # Equivalent for SQL Query "SELECT * FROM orders;"
-    return response.data
 
 @app.route('/')
 def index():
@@ -86,6 +81,58 @@ def add_order_database():
     else:
         return jsonify({"error": "Invalid request format (JSON expected)"})
 
+
+@app.route('/confirm_order', methods=['POST'])
+def confirm_order():
+    # Check if the request contains JSON data
+    if request.is_json:
+        try:
+            data = request.get_json()
+
+            # Access specific data from the JSON input
+            order_id = data.get("order_id", 0)
+
+            # Add order to the routes table
+            route_info = add_order_to_route(order_id)                  #*** tony's function, needs to return route_id and route_name ***
+
+            # Update order status to confirmed
+            response = supabase.table('orders').update("confirmed", True).eq("id", order_id).execute()
+
+            message = f"Order has been confirmed and added to route {route_info['route_name']}, id {route_info['route_id']}."
+            return message # this will need to be changed
+
+        except Exception as e:
+            return jsonify({"error": "Invalid input format or processing error"})
+    else:
+        return jsonify({"error": "Invalid request format (JSON expected)"})
+    
+
+def reset_databases():
+    # erase all orders in 'orders' db    
+    supabase.table('orders').delete().gte('id', 0)eq.execute()
+    # add more tasks here if needed
+
+
+def schedule_reset_at_midnight():
+    # Schedule task to run daily at midnight
+    schedule.every().day.at("00:00").do(reset_at_midnight)
+
+    while True:
+        # Run scheduled tasks
+        schedule.run_pending()
+        time.sleep(1)
+
+
+if __name__ == '__main__':
+    # Run separate thread for scheduled resets
+    from threading import Thread
+
+    scheduler_thread = Thread(target=schedule_reset_at_midnight)
+    scheduler_thread.start()
+
+    # Run everything else aka the app
+    app.run()
+
 # def midnight_eraser():
 #     # erase supabase orders here
 
@@ -97,6 +144,6 @@ def add_order_database():
 
 
 
-if __name__ == '__main__':
-  app.run()
+#if __name__ == '__main__':
+  #app.run()
 
