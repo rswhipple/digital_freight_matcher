@@ -36,21 +36,23 @@ def add_order_database():
             # Access specific data from the JSON input
             cargo = data.get("cargo", {})
             packages = cargo.get("packages", [])
-            pick_up = data.get("pick-up", {})   # make sure format is (lon, lat) ******************  this may cause error
-            drop_off = data.get("drop-off", {})
             volume, weight, package_type = packages
-            pickup = (pick_up.get("longitude", 0), pick_up.get("latitude", 0))
-            dropoff = (drop_off.get("longitude", 0), drop_off.get("latitude", 0))
 
-            print(f"pickup: {pickup}; dropoff: {dropoff}")
+            # convert pickup and dropoff into correct wtk (well known text) point format
+            #   get raw data
+            raw_pickup = data.get("pick-up", {})   
+            raw_dropoff = data.get("drop-off", {})
+            #   create correctly ordered tuple (lon, lat)
+            pickup_tuple = (raw_pickup.get("longitude", 0), raw_pickup.get("latitude", 0))
+            dropoff_tuple = (raw_dropoff.get("longitude", 0), raw_dropoff.get("latitude", 0))
 
             # Process the data or return a response as needed
             order_data = {
                 "volume": volume,
                 "weight": weight,
                 "package_type": package_type,
-                "pickup": pickup,
-                "dropoff": dropoff,
+                "pickup": pickup_tuple,
+                "dropoff": dropoff_tuple,
                 "in_range": True,
             }
 
@@ -61,7 +63,7 @@ def add_order_database():
             order_id = response.data[0]["id"]
 
             # Check if order is in range
-            range = is_in_range(pickup, dropoff)
+            range = is_in_range(pickup_tuple, dropoff_tuple)
 
             if not range:
                 # Update order in database and return error if out of range

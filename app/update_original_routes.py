@@ -10,12 +10,18 @@ supabase = create_client(something.url, something.something)
 
 def update_original_routes():
     # route data
+    anchor_1 = (-85.1103924702221, 34.9161210050057)
+    anchor_2 = (-81.8920767938344, 33.4676716195606)
+    anchor_3 = (-80.9773396382228, 32.0815296895872)
+    anchor_4 = (-84.1807668794164, 31.5770410650746)
+    anchor_5 = (-85.1587927831466, 32.4661710120819)
+
     route_anchors = {
-        "1": (-85.1103924702221, 34.9161210050057),
-        "2": (-81.8920767938344, 33.4676716195606),
-        "3": (-80.9773396382228, 32.0815296895872),
-        "4": (-84.1807668794164, 31.5770410650746),
-        "5": (-85.1587927831466, 32.4661710120819),
+        "1": anchor_1,
+        "2": anchor_2,
+        "3": anchor_3,
+        "4": anchor_4,
+        "5": anchor_5,
     }
     # build new route
     home_base = (-84.3875298776525, 33.754413815792205)
@@ -41,7 +47,6 @@ def update_original_routes():
             'total_miles': total_miles
         }
         
-
         try:
             updated_route = supabase.table('routes').update(route_row_data) \
                 .eq('id', route_id).execute()

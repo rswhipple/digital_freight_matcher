@@ -2,6 +2,7 @@ from flask import Flask, json
 from supabase import create_client, Client
 import something
 from pprint import pprint
+from shapely import wkt
 import requests
 
 METERS2MILES = 0.000621371
@@ -9,6 +10,11 @@ TOTAL_TRUCK_VOLUME = 1700   # cubic feet
 TOTAL_TRUCK_WEIGHT = 9180   # pounds
 STD_PACKAGE_VOL = 18
 PALLET_VOL = 64
+HEADERS = { 
+    "apikey": something.something, 
+    "Authorization": f"Bearer {something.something}",
+        "Content-Type": "application/json"
+    }
 
 app = Flask(__name__)
 
@@ -22,10 +28,12 @@ def process_order(order_id, order_data):
     route_id = 0
 
     # check if order fits on an existing route
-    route_match = compare_routes(order_data)   
+    route_info = compare_routes(order_data)   
 
     # if route match is found
-    if route_match:
+    if route_info:
+        route_match = route_info["route_match"]
+        coord_data = route_info["coord_data"]
         # add route_id to order
         route_id = route_match[0]["route_id"]
         try:
@@ -36,131 +44,41 @@ def process_order(order_id, order_data):
             exit(1)
 
         # add order to route
-        add_order_to_route(order_id, order_data, route_match)
+        coord_data = add_order_to_route(order_id, order_data, route_id, coord_data)
+        order_point_subset = coord_data["order_point_subset"]
 
-        # if route is_original() calculate price 
+        # calculate price
+        price = calculate_price(order_id, order_point_subset)
+
+        # if is_original, return price
         if is_original(route_id):
-            price = calculate_price(order_id, order_data, route_id)
-        # else check if it is profitable before calculating price
+            return price
+        # else check profitability
         else:
             if is_profitable(route_id):
-                price = calculate_price(order_id, order_data, route_id)
-                # TODO calculate price for every order in route
+                # TODO return price for every order in route
+                return price
             else:
                 print("No profitable route found, order stored for future")
-  
+                return None
+
   # if there is no match, create a new route and check whether the route is profitable
     else: 
-        route_id = create_new_route(order_id, order_data)
-        results = is_profitable(route_match) 
-        if results:
+        # create new route
+        new_route_data = create_new_route(order_id, order_data)
+        route_id = new_route_data["route_id"]
+        points = new_route_data["points"]
+
         # calculate price
-            price = calculate_price(order_id, order_data, route_id)
+        price = calculate_price(order_id, points)
+
+        # check profitability
+        if (is_profitable(route_id)):
             print(f"New profitable route found, route_id {route_id}.")
         else:
             print("No profitable route found, order stored for future")
     
     return price
-    
-
-def compare_routes(order_data):
-    # create local variables
-    pickup = order_data["pickup"]
-    dropoff = order_data["dropoff"]
-
-    # create pickup and dropoff points ON EXISTING ROUTES
-    route_match = check_points(pickup, dropoff)
-
-    if route_match:
-        capacity = check_capacity(order_data, route_match)
-
-        if capacity:
-            return route_match
-        else:
-            return None
-    else:
-        return None
-    
-  
-# pickup and dropoff points come from orders table
-def check_points(pickup, dropoff):
-    # create local variables
-    routes_table = "routes"
-
-    # Function and parameters
-    function_name = "check_points"
-    payload = {
-        "_pickup": pickup,
-        "_dropoff": dropoff
-    }
-
-    # Headers
-    headers = {
-        "apikey": something.something,
-        "Authorization": f"Bearer {something.something}",
-        "Content-Type": "application/json"
-    }
-
-    # Make the request
-    response = requests.post(
-        f"{something.url}/rest/v1/rpc/{function_name}",
-        headers=headers,
-        data=json.dumps(payload)
-    )
-
-    # Check response
-    if response.status_code == 200:
-        result = response.json()
-        route_match = result.data[0]
-        return route_match
-    else:
-        print(f"check_points: {response.status_code}")
-        exit(1)
-
-
-def check_capacity(order_data, route_match):
-    # create local variables
-    route_id = route_match[0]["route_id"]
-    closest_pickup = route_match[0]["closest_point_to_p"]
-    closest_dropoff = route_match[0]["closest_point_to_d"]
-    order_vol = order_data["order_vol"]
-    order_weight = order_data["order_weight"]
-    coordinates_table = "coordinates"
-
-    # Function and parameters
-    function_name = "check_capacity"
-    payload = {
-        "_order_vol": order_vol,
-        "_order_weight": order_weight,
-        "_route_id": route_id,
-        "_closest_pickup": closest_pickup,
-        "_closest_dropoff": closest_dropoff
-    }
-
-    # Headers
-    headers = {
-        "apikey": something.something,
-        "Authorization": f"Bearer {something.something}",
-        "Content-Type": "application/json"
-    }
-
-    # Make the request
-    response = requests.post(
-        f"{something.url}/rest/v1/rpc/{function_name}",
-        headers=headers,
-        data=json.dumps(payload)
-    )
-
-    # Check response
-    if response.status_code == 200:
-        result = response.json()
-        capacity_available = result.data[0]
-        return capacity_available
-    else:
-        print(f"Error: {response.status_code}")
-
-
-
 
 # pickup and dropoff points come from orders table
 def import_route(points):
@@ -189,9 +107,141 @@ def import_route(points):
         return route_data
     else:
         print("Error: Unable to fetch route data")
+    
+
+def compare_routes(order_data):
+    # create local variables
+    pickup = order_data["pickup"]
+    dropoff = order_data["dropoff"]
+
+    # create pickup and dropoff points ON EXISTING ROUTES
+    route_match = check_points(pickup, dropoff)
+
+    if route_match:
+        coord_data = check_capacity(order_data, route_match)
+
+        if coord_data:
+            route_info = {
+                "route_match": route_match,
+                "coord_data": coord_data
+            }
+            return route_info
+        else:
+            return None
+    else:
+        return None
+    
+  
+# pickup and dropoff points come from orders table
+def check_points(pickup, dropoff):
+    # create local variables
+    routes_table = "routes"
+
+    # convert points to Well Known Text (WKT)
+    pickup_wkt = convert_tuple_to_wkt(pickup)
+    dropoff_wkt = convert_tuple_to_wkt(dropoff)
+
+    # Function and parameters
+    function_name = "check_points"
+    payload = {
+        "_pickup": pickup_wkt,
+        "_dropoff": dropoff_wkt
+    }
+
+    # Make the request
+    response = requests.post(
+        f"{something.url}/rest/v1/rpc/{function_name}",
+        headers=HEADERS,
+        data=json.dumps(payload)
+    )
+
+    # Check response
+    if response.status_code == 200:
+        result = response.json()
+        route_match = result.data[0]
+        return route_match
+    else:
+        print(f"check_points: {response.status_code}")
+        exit(1)
 
 
-def is_in_range(pick_up, drop_off):
+def check_capacity(order_data, route_match):
+    # create local variables
+    route_id = route_match[0]["route_id"]
+    order_vol = order_data["order_vol"]
+    order_weight = order_data["order_weight"]
+
+    # create list of points on route [point before pickup: point before dropoff + 1]
+    coord_data = find_coord_data(route_match)
+    points = coord_data["order_point_subset"]
+
+
+    # Function and parameters
+    function_name = "check_capacity"
+    payload = {
+        "_order_vol": order_vol,
+        "_order_weight": order_weight,
+        "_route_id": route_id,
+        "_wkt_points": points
+    }
+
+    # Make the request
+    response = requests.post(
+        f"{something.url}/rest/v1/rpc/{function_name}",
+        headers=HEADERS,
+        data=json.dumps(payload)
+    )
+
+    # Check response
+    if response.status_code == 200:
+        result = response.json()
+        capacity_available = result.data[0]
+        if capacity_available:
+            return coord_data
+        else:
+            return None
+    else:
+        print(f"check_capacity: {response.status_code}")
+
+
+def find_coord_data(route_match):
+    """
+    find point before closest_point_p and point after closest_point_d
+    create a list of all points inbetween these 2 points (inclusive)
+    """
+    route_id = route_match[0]["route_id"]
+    closest_point_pickup = route_match[0]["closest_point_p"]
+    closest_point_dropoff = route_match[0]["closest_point_d"]
+
+    # retrieve route_id points from supabase
+    try:
+        print("Line 679")
+        result = supabase.table('routes').select('points').eq('id', route_id).execute()
+        points = result.data[0]['points']
+    except:
+        print("find_coords: Error retrieving points with route_id: ", route_id)
+        exit(1)
+
+    # find index_a, point before closest_point_pickup
+    point_a = find_point_before(route_id, closest_point_pickup, points)
+
+    # find index_b, point after closest_point_dropoff
+    point_b = find_point_before(route_id, closest_point_dropoff, points)
+    
+    # return list of all points between index_a and index_b inclusive
+    point_subset = points_between(points, point_a, point_b)
+
+    coord_data = {
+        "route_points": points,
+        "order_point_subset": point_subset,
+        "point_before_pickup": point_a,
+        "point_before_dropoff": point_b
+    }
+
+    return coord_data
+
+
+def is_in_range(pickup, dropoff):
     """checks if order is within area of service
 
     pick_up, drop_off: lists (lon, lat)
@@ -201,7 +251,7 @@ def is_in_range(pick_up, drop_off):
     # Set variable for 
     home_base = (-84.3875298776525, 33.754413815792205)
 
-    points = [home_base, pick_up, drop_off, home_base]
+    points = [home_base, pickup, dropoff, home_base]
 
     route_data = import_route(points)
 
@@ -225,56 +275,40 @@ def is_original(route_id):
 
 # Tony's functions starts here
 
-def add_order_to_route(order_id, order_data, route_match):
+def add_order_to_route(order_id, order_data, route_id, coord_data):
     """adds an order to a given route
 
     order_id: int -- id of order to add to a route
 
     return: True if successful, False otherwise
     """
-    # Create local variables by parsing route_match + order_data
-    route_id = route_match[0]["route_id"]
-    closest_pickup = route_match[0]["closest_point_to_p"]
-    closest_dropoff = route_match[0]["closest_point_to_p"]
+    # Create local variables 
     pickup = order_data["pickup"]
     dropoff = order_data["dropoff"]
+    point_before_pickup = coord_data["point_before_pickup"]
+    point_before_dropoff = coord_data["point_before_dropoff"]
+    points = coord_data["route_points"]
 
-    # Steps to merge pickup and dropoff points into existing route
-    # retrieve data from routes table
-    try:
-        print("Line 248")
-        route_table_data = supabase.table('routes').select('route_geom', 'points').eq('id', route_id).execute()
-    except:
-        print("add_order_to_route: route_geom and points not found in routes")
-        exit(1)
+    # Insert pickup and dropoff into correct position in point list
+    index_a = points.index(point_before_pickup)
+    points.insert(index_a + 1, pickup)
 
-    route_geom = route_table_data.data[0]['route_geom']
-    points = route_table_data.data[0]['points']
+    index_b = points.index(point_before_dropoff)
+    points.insert(index_b + 1, dropoff)
 
-    # add closest_pickup and closest_dropoff to points 
-    # points.extend([closest_pickup, closest_dropoff])
-
-    # call determine_order to get the new list of merged points
-    ordered_points = determine_order(points, route_id, \
-        closest_pickup, closest_dropoff, pickup, dropoff)
-
-    # in ordered_points replace closest_pickup with pickup AND closest_dropoff with dropoff 
-    for point in ordered_points:
-        if point == closest_pickup:
-            point = pickup
-        elif point == closest_dropoff:
-            point = dropoff
+    coord_data["route_points"] = points
+    coord_data["order_point_subset"] = points[points.index(pickup): points.index(dropoff) + 1]
 
     # Update route table
     # question + do we need the route_data?
-    update_routes_table(ordered_points, route_id)
+    update_routes_table(points, route_id)
     
     # Insert new points in coordinates table
-    new_points = [pickup, dropoff]
-    insert_coordinates_table(route_id, new_points, order_data)
+    insert_coord_existing_route(route_id, order_data, pickup, point_before_pickup) 
+    insert_coord_existing_route(route_id, order_data, dropoff, point_before_dropoff) 
 
     # Update empty_vol and empty_weight in coordinates table
-    update_coordinates_table(route_id, ordered_points, order_id, order_data)
+    update_coordinates_table(route_id, order_data, coord_data)
 
     # Update orders table  (confirm)
     try:
@@ -284,7 +318,7 @@ def add_order_to_route(order_id, order_data, route_match):
         print("add_order_to_route: update of orders table failed")
         exit(1)
 
-    return True
+    return coord_data
 
 
 def create_new_route(order_id, order_data):
@@ -296,7 +330,7 @@ def create_new_route(order_id, order_data):
     return: id of new route created
     """
     # build new route
-    home_base = (-84.3875298776525, 33.754413815792205)
+    home_base= (-84.3875298776525, 33.754413815792205)
     points = [home_base, order_data["pickup"], order_data["dropoff"], home_base]
     new_route = {"points": points}
 
@@ -309,7 +343,6 @@ def create_new_route(order_id, order_data):
         exit(1)
 
     route_id = route_id.data[0]["id"]
-    print(route_id)
 
     # add route_id to order
     try:
@@ -323,17 +356,22 @@ def create_new_route(order_id, order_data):
     update_routes_table(points, route_id)
 
     # create new rows in coordinates table with correct data
-    insert_coordinates_table(route_id, points, order_data)
+    insert_coord_new_route(route_id, points, order_data)
+
+    new_route_data = {
+        "route_id": route_id,
+        "points": points
+    }
 
     # create new row in margins table with margin_route_id
-    try:
-        print("Line 333")
-        response = supabase.table('margins').insert({'margin_route_id': route_id}).execute()
-    except:
-        print("create_new_route: Error creating margins table row for new route")
-        exit(1)
+    # try:
+    #     print("Line 333")
+    #     response = supabase.table('margins').insert({'margin_route_id': route_id}).execute()
+    # except:
+    #     print("create_new_route: Error creating margins table row for new route")
+    #     exit(1)
 
-    return route_id
+    return new_route_data
 
 
 def update_routes_table(ordered_points, route_id):
@@ -372,13 +410,13 @@ def update_routes_table(ordered_points, route_id):
     return route_data
     
 
-def update_coordinates_table(route_id, ordered_points, order_data):
+def update_coordinates_table(route_id, order_data, coord_data):
     # create local variables
     pickup = order_data['pickup']
     dropoff = order_data['dropoff']
 
     # find affected points
-    package_points = order_package_points(ordered_points, pickup, dropoff)
+    package_points = coord_data["order_point_subset"]
 
     for point in package_points:
         # get current volume and weight data
@@ -415,7 +453,7 @@ def update_coordinates_table(route_id, ordered_points, order_data):
     return True
 
 
-def insert_coordinates_table(route_id, points, order_data):
+def insert_coord_new_route(route_id, points, order_data):
     # calculate empty_vol and empty weight
     # weight per/package * num packages
     if order_data["package_type"] == 'standard':
@@ -434,7 +472,7 @@ def insert_coordinates_table(route_id, points, order_data):
             'coordinate_route_id': route_id
         }
     try:
-        print("Line 440")
+        print("Line 475")
         response = supabase.table('coordinates').insert(coordinates_row_data).execute()
     except:
         print("insert_coordinates_table: Error during insert")
@@ -443,75 +481,43 @@ def insert_coordinates_table(route_id, points, order_data):
     return True
 
 
-def determine_order(points, route_id, closest_pickup, closest_dropoff, pickup, dropoff):
-    # Supabase function name
-    function_name = "first_point"
+def insert_coord_existing_route(route_id, order_data, point, point_before):
+    # calculate empty_vol and empty_weight for pickup
+    try:
+        print("Line 487")
+        capacity_data = supabase.table('coordinates').select('empty_vol', 'empty_weight') \
+                .eq('coordinate_route_id', route_id).eq('point', point_before).execute()
+    except:
+        print("insert_coord_existing_route(): Error during select")
+        exit(1)
+    
+    current_vol = capacity_data.data[0]['empty_vol']
+    current_weight = capacity_data.data[0]['empty_weight']
+    # weight per/package * num packages
+    if order_data["package_type"] == 'standard':
+        total_order_vol = STD_PACKAGE_VOL * order_data['order_vol']
+        empty_vol = current_vol - total_order_vol
+        total_order_weight = order_data['weight']   # make sure total weight is provided
+        empty_weight = current_weight - total_order_weight
 
-    # Headers
-    headers = {
-        "apikey": something.something,
-        "Authorization": f"Bearer {something.something}",
-        "Content-Type": "application/json"
+    # transform points into rows for table
+    coordinates_row_data = {
+        'point': point,
+        'empty_vol': empty_vol,
+        'empty_weight': empty_weight,
+        'coordinate_route_id': route_id
     }
+    try:
+        print("Line 440")
+        response = supabase.table('coordinates').insert(coordinates_row_data).execute()
+    except:
+        print("insert_coord_existing_route(): Error during insert")
+        exit(1)
 
-    # for each point, check if closest_pickup comes before point, 
-    #   if yes, insert pickup 
-    for point, index in enumerate(points.copy()):
-        payload = {
-            "_route_id": route_id,
-            "_point_a": point,
-            "_point_b": closest_pickup,
-        }
-
-        # Make the request
-        response = requests.post(
-            f"{something.url}/rest/v1/rpc/{function_name}",
-            headers=headers,
-            data=json.dumps(payload)
-        )
-
-        # Check response
-        if response.status_code == 200:
-            result = response.json()
-            next_point = result.data[0]['first_point']
-
-            if next_point == closest_pickup: 
-                points.insert(index, pickup)
-                break
-        else:
-            print(f"Error in determine_order(): {response.status_code}")
-
-    # for each point, check if closest_dropoff comes before point, 
-    #   if yes, insert dropoff 
-    for point, index in enumerate(points.copy()):
-        payload = {
-            "_route_id": route_id,
-            "_point_a": point,
-            "_point_b": closest_dropoff,
-        }
-
-        # Make the request
-        response = requests.post(
-            f"{something.url}/rest/v1/rpc/{function_name}",
-            headers=headers,
-            data=json.dumps(payload)
-        )
-
-        # Check response
-        if response.status_code == 200:
-            result = response.json()
-            next_point = result.data[0]['first_point']
-
-            if next_point == closest_dropoff: 
-                points.insert(index, dropoff)
-                break
-        else:
-            print(f"Error in determine_order(): {response.status_code}")
-
-    return points
+    return True
 
 
-def calculate_price(order_id, order_data, route_id):
+def calculate_price(order_id, order_point_subset):
     """calculates the price of a new order
 
     order_id: int -- order id to use for calculating price
@@ -542,20 +548,7 @@ def calculate_price(order_id, order_data, route_id):
     markup = cost_data.data[0]['markup']
 
     # calculate package distance
-    pickup = order_data['pick_up']
-    dropoff = order_data['drop_off']
-
-    try:
-        print("Line 552")
-        points = supabase.table('routes').select('points') \
-            .eq('id', route_id).execute()
-    except:
-        print("calculate_price: routes table cannot select points")
-        exit(1)
-
-    package_points = order_package_points(points, pickup, dropoff)
-
-    mapbox_data = import_route(package_points)
+    mapbox_data = import_route(order_point_subset)
     distance_meters = mapbox_data['routes'][0]['distance']
     package_miles = distance_meters * METERS2MILES
 
@@ -586,20 +579,14 @@ def is_profitable(route_id):
     return: True if profitable, False otherwise
     """
     # get total price of orders on route
+    # Function name and parameters
     function_name = "calculate_total_price"
     payload = { "_route_id": route_id }
-
-    # Headers
-    headers = {
-        "apikey": something.something,
-        "Authorization": f"Bearer {something.something}",
-        "Content-Type": "application/json"
-    }
 
     # Make the request
     response = requests.post(
         f"{something.url}/rest/v1/rpc/{function_name}",
-        headers=headers,
+        headers=HEADERS,
         data=json.dumps(payload)
     )
 
@@ -654,15 +641,92 @@ def is_profitable(route_id):
     return margin > 0
 
 
-def order_package_points(points, pickup, dropoff):
-    for point, index in enumerate(points):
-        if point == pickup:
-            pickup_index = index
-        elif point == dropoff:
-            dropoff_index = index
-            break
+def points_between(points, point_a, point_b):
+    try:
+        index_a = points.index(point_a)
+        index_b = points.index(point_b)
 
-    package_points = point[pickup_index : dropoff_index + 1]
+        return points[index_a: index_b + 1]
+    except:
+        # value error 
+        return []
 
-    return package_points
 
+def find_point_before(route_id, point_list, point):
+    # convert point_list to WKT
+    for point in point_list:
+        point = convert_tuple_to_wkt(point)
+
+    # Supabase function name and parameters
+    function_name = "point_before"
+    payload = {
+        "_route_id": route_id,
+        "_point": point,
+        "_point_list": point_list,
+    }
+
+    # Make the request
+    response = requests.post(
+        f"{something.url}/rest/v1/rpc/{function_name}",
+        headers=HEADERS,
+        data=json.dumps(payload)
+    )
+
+    # Check response
+    if response.status_code == 200:
+        result = response.json()
+        point_before = result.data
+        point_before = convert_geom_to_tuple(point_before)
+    else:
+        print(f"Error in find_point_before(): {response.status_code}")
+    
+    return point_before
+
+def convert_tuple_to_wkt(lon_lat_tuple):
+    # Convert tuple to WKT format
+    return f"POINT({lon_lat_tuple[0]} {lon_lat_tuple[1]})" # Example Output: POINT(-73.935242 40.730610)
+
+
+def convert_geom_to_tuple(geometry_point):
+    # Convert WKT to a shapely Point object
+    point = wkt.loads(geometry_point)
+
+    # Convert the Point to a tuple (longitude, latitude)
+    return (point.x, point.y)
+
+
+
+
+
+
+
+
+# def find_point_after(route_id, point_list, point):
+#     # convert point_list to WKT
+#     for point in point_list:
+#         point = convert_tuple_to_wkt(point)
+
+#     # Supabase function name
+#     function_name = "point_after"
+#     payload = {
+#         "_route_id": route_id,
+#         "_point": point,
+#         "point_list": point_list
+#     }
+
+#     # Make the request
+#     response = requests.post(
+#         f"{something.url}/rest/v1/rpc/{function_name}",
+#         headers=HEADERS,
+#         data=json.dumps(payload)
+#     )
+
+#     # Check response
+#     if response.status_code == 200:
+#         result = response.json()
+#         point_after = result.data
+#         point_after = convert_geom_to_tuple(point_after)
+#     else:
+#         print(f"Error in find_point_before(): {response.status_code}")
+    
+#     return point_after
