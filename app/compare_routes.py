@@ -4,6 +4,7 @@ import something
 from pprint import pprint
 from shapely import wkt
 import requests
+import polyline
 
 METERS2MILES = 0.000621371
 TOTAL_TRUCK_VOLUME = 1700   # cubic feet
@@ -25,7 +26,7 @@ def process_order(order_id, order_data):
     # create local variables
     order_table = "orders"
     price = 0
-    route_id = 0
+    # route_id = 0
 
     # check if order fits on an existing route
     route_info = compare_routes(order_data)   
@@ -34,8 +35,8 @@ def process_order(order_id, order_data):
     if route_info:
         route_match = route_info["route_match"]
         coord_data = route_info["coord_data"]
-        # add route_id to order
         route_id = route_match[0]["route_id"]
+        # add route_id to order
         try:
             print("Line 40")
             order_update = supabase.table(order_table).update({"order_route_id": route_id}).eq("id", order_id).execute()
@@ -104,6 +105,23 @@ def import_route(points):
     if response.status_code == 200:
         # Return route_data as a json object
         route_data = response.json()
+
+        route_geom = route_data['routes'][0]['geometry']['coordinates']
+        decoded_points = polyline.decode(route_geom)
+        wkt_linestring = "LINESTRING(" + ", ".join([f"{lon} {lat}" for lat, lon in decoded_points]) + ")"
+
+        distance_in_meters = route_data['routes'][0]['distance']
+        duration_in_seconds = route_data['routes'][0]['duration']
+        total_miles = distance_in_meters * METERS2MILES # (1 meter = 0.000621371 miles)
+        total_time = duration_in_seconds / 60
+
+        route_row_data = {
+            'points': points,
+            'route_geom': wkt_linestring,
+            'total_time': total_time,
+            'total_miles': total_miles
+        }
+
         return route_data
     else:
         print("Error: Unable to fetch route data")

@@ -34,6 +34,9 @@ def update_original_routes():
         # pprint(route_data)
 
         route_geom = route_data['routes'][0]["geometry"]['coordinates']
+        decoded_points = polyline.decode(route_geom)
+        wkt_linestring = "LINESTRING(" + ", ".join([f"{lon} {lat}" for lat, lon in decoded_points]) + ")"
+
         distance_in_meters = route_data['routes'][0]['distance']
         duration_in_seconds = route_data['routes'][0]['duration']
         total_miles = distance_in_meters * METERS2MILES # (1 meter = 0.000621371 miles)
@@ -42,7 +45,7 @@ def update_original_routes():
         route_row_data = {
             'id': route_id,
             'points': points,
-            'route_geom': route_geom,
+            'route_geom': wkt_linestring,
             'total_time': total_time,
             'total_miles': total_miles
         }
