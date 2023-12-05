@@ -4,7 +4,7 @@ import something
 from pprint import pprint
 from shapely import wkt
 import requests
-import polyline
+# import polyline
 
 METERS2MILES = 0.000621371
 TOTAL_TRUCK_VOLUME = 1700   # cubic feet
@@ -107,8 +107,8 @@ def import_route(points):
         route_data = response.json()
 
         route_geom = route_data['routes'][0]['geometry']['coordinates']
-        decoded_points = polyline.decode(route_geom)
-        wkt_linestring = "LINESTRING(" + ", ".join([f"{lon} {lat}" for lat, lon in decoded_points]) + ")"
+        # decoded_points = polyline.decode(route_geom)
+        wkt_linestring = "LINESTRING(" + ", ".join([f"{lon} {lat}" for lat, lon in route_geom]) + ")"
 
         distance_in_meters = route_data['routes'][0]['distance']
         duration_in_seconds = route_data['routes'][0]['duration']

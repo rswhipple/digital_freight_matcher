@@ -34,8 +34,8 @@ def update_original_routes():
         # pprint(route_data)
 
         route_geom = route_data['routes'][0]["geometry"]['coordinates']
-        decoded_points = polyline.decode(route_geom)
-        wkt_linestring = "LINESTRING(" + ", ".join([f"{lon} {lat}" for lat, lon in decoded_points]) + ")"
+        # decoded_points = polyline.decode(route_geom)
+        wkt_linestring = "LINESTRING(" + ", ".join([f"{lon} {lat}" for lat, lon in route_geom]) + ")"
 
         distance_in_meters = route_data['routes'][0]['distance']
         duration_in_seconds = route_data['routes'][0]['duration']
