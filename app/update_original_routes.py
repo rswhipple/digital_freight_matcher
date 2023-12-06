@@ -31,27 +31,9 @@ def update_original_routes():
         points = [home_base, route_anchors[f"{index}"], home_base]
 
         route_data = import_route(points)
-        # pprint(route_data)
-
-        route_geom = route_data['routes'][0]["geometry"]['coordinates']
-        # decoded_points = polyline.decode(route_geom)
-        wkt_linestring = "LINESTRING(" + ", ".join([f"{lon} {lat}" for lat, lon in route_geom]) + ")"
-
-        distance_in_meters = route_data['routes'][0]['distance']
-        duration_in_seconds = route_data['routes'][0]['duration']
-        total_miles = distance_in_meters * METERS2MILES # (1 meter = 0.000621371 miles)
-        total_time = duration_in_seconds / 60
-
-        route_row_data = {
-            'id': route_id,
-            'points': points,
-            'route_geom': wkt_linestring,
-            'total_time': total_time,
-            'total_miles': total_miles
-        }
         
         try:
-            updated_route = supabase.table('routes').update(route_row_data) \
+            updated_route = supabase.table('routes').update(route_data) \
                 .eq('id', route_id).execute()
         except:
             print(f"update original routes: table could not be updated")

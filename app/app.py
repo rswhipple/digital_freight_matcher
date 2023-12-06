@@ -6,6 +6,7 @@ import something
 from pprint import pprint
 from compare_routes import *
 
+
 app = Flask(__name__)
 
 supabase = create_client(something.url, something.something)
@@ -83,6 +84,7 @@ def add_order_database():
                 return jsonify({message}) # this will need to be changed
 
         except Exception as e:
+            print("Line 87")
             print(e)
             return jsonify({"error": "Invalid input format or processing error"})
     else:

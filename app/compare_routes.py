@@ -4,7 +4,6 @@ import something
 from pprint import pprint
 from shapely import wkt
 import requests
-# import polyline
 
 METERS2MILES = 0.000621371
 TOTAL_TRUCK_VOLUME = 1700   # cubic feet
@@ -26,7 +25,6 @@ def process_order(order_id, order_data):
     # create local variables
     order_table = "orders"
     price = 0
-    # route_id = 0
 
     # check if order fits on an existing route
     route_info = compare_routes(order_data)   
@@ -106,21 +104,23 @@ def import_route(points):
         # Return route_data as a json object
         route_data = response.json()
 
+        # Turn mapbox coordinates into a linestring
         route_geom = route_data['routes'][0]['geometry']['coordinates']
-        # decoded_points = polyline.decode(route_geom)
-        wkt_linestring = "LINESTRING(" + ", ".join([f"{lon} {lat}" for lat, lon in route_geom]) + ")"
+        wkt_linestring = "LINESTRING(" + ", ".join([f"{lon} {lat}" for lon, lat in route_geom]) + ")"
 
         distance_in_meters = route_data['routes'][0]['distance']
         duration_in_seconds = route_data['routes'][0]['duration']
         total_miles = distance_in_meters * METERS2MILES # (1 meter = 0.000621371 miles)
         total_time = duration_in_seconds / 60
 
-        route_row_data = {
+        route_data = {
             'points': points,
             'route_geom': wkt_linestring,
             'total_time': total_time,
             'total_miles': total_miles
         }
+
+        print("import_route, line 124")
 
         return route_data
     else:
@@ -131,6 +131,7 @@ def compare_routes(order_data):
     # create local variables
     pickup = order_data["pickup"]
     dropoff = order_data["dropoff"]
+    print("compare_routes() Line 134")
 
     # create pickup and dropoff points ON EXISTING ROUTES
     route_match = check_points(pickup, dropoff)
@@ -160,7 +161,7 @@ def check_points(pickup, dropoff):
     dropoff_wkt = convert_tuple_to_wkt(dropoff)
 
     # Function and parameters
-    function_name = "check_points"
+    function_name = "find_closest_points"
     payload = {
         "_pickup": pickup_wkt,
         "_dropoff": dropoff_wkt
@@ -176,7 +177,8 @@ def check_points(pickup, dropoff):
     # Check response
     if response.status_code == 200:
         result = response.json()
-        route_match = result.data[0]
+        print("Line 180")
+        route_match = result['data'][0]
         return route_match
     else:
         print(f"check_points: {response.status_code}")
@@ -213,7 +215,7 @@ def check_capacity(order_data, route_match):
     # Check response
     if response.status_code == 200:
         result = response.json()
-        capacity_available = result.data[0]
+        capacity_available = result['data'][0]
         if capacity_available:
             return coord_data
         else:
@@ -273,10 +275,14 @@ def is_in_range(pickup, dropoff):
 
     route_data = import_route(points)
 
+    print()
+
     # Check if route is within 10 hours
-    if route_data["routes"][0]["duration"] < 36000:
+    if route_data['total_time'] < 600:
+        print("is_in_range() = True")
         return True
     else:
+        print("is_in_range() = False")
         return False
   
 def is_original(route_id):
