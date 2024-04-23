@@ -1,4 +1,6 @@
 # Engineering Lab 1 - Digital Freight Matching
+This project is a WIP, please check back later for a functional version.
+
 
 # Problem Statement
 <p>Infinity and Beyond, a family-owned trucking enterprise based in Atlanta, GA, recently landed a significant contract with the Too-Big-To-Fail company. This substantial collaboration led them to acquire five new trucks and establish expansive routes spanning the entirety of the state. Despite having fixed rates determined by the volume of cargo transported, the company faces challenges. The mounting pressures of inflation and decreased contracted cargo have caused them to feel the financial pinch on some of these routes.</p>
